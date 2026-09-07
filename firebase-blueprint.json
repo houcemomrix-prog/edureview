@@ -1,0 +1,167 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Represents a registered school user or moderator profile in the Ministry of Education system. Must sign up with an @moe.om email.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "name": { "type": "string", "description": "Full Name" },
+        "email": { "type": "string", "format": "email", "description": "School or Moderator email ending in @moe.om" },
+        "role": { "type": "string", "enum": ["school", "moderator", "admin"], "description": "The user role defining their system permissions" },
+        "schoolName": { "type": "string", "description": "Name of the school" },
+        "wilaya": { "type": "string", "description": "The Wilaya of the school / user" },
+        "directorate": { "type": "string", "description": "The Directorate of the school / user" },
+        "appointmentYear": { "type": "string", "description": "The year of appointment to MOE (4 characters)" },
+        "jobTitle": { "type": "string", "enum": ["معلم", "مدقق", "مدير مدرسة", "مدير النظام"], "description": "Functional job title" },
+        "subject": { "type": "string", "description": "Academic subject specialty assigned to teacher or auditor" },
+        "roleType": { "type": "string", "enum": ["administrative", "teacher"], "description": "Internal helper type" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Profile registration timestamp" }
+      },
+      "required": ["uid", "name", "email", "role"]
+    },
+    "Assessment": {
+      "title": "Assessment",
+      "description": "Represents a student test or quiz uploaded by a school to be moderated by MOE moderators.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "Title of the test or quiz" },
+        "type": { "type": "string", "enum": ["test", "quiz"], "description": "Type of assessment" },
+        "grade": { "type": "string", "description": "Target students grade (e.g. Grade 1 - 12)" },
+        "subject": { "type": "string", "description": "Academic subject (e.g. Mathematics, Science)" },
+        "description": { "type": "string", "description": "Brief summary or instructions of the assessment" },
+        "questions": { "type": "string", "description": "The actual questions or exam questions of the assessment" },
+        "keyAnswer": { "type": "string", "description": "Answer key and marking guides for moderation" },
+        "status": { "type": "string", "enum": ["Pending", "In Progress", "Approved", "Revision Request"], "description": "Current state in the moderation lifecycle" },
+        "schoolId": { "type": "string", "description": "UID of the school user who uploaded" },
+        "schoolName": { "type": "string", "description": "Cached school name for list queries" },
+        "schoolEmail": { "type": "string", "description": "Cached school email" },
+        "moderatorId": { "type": "string", "description": "UID of the moderator auditing the test, or null" },
+        "moderatorName": { "type": "string", "description": "Name of the claimer moderator" },
+        "feedback": { "type": "string", "description": "Feedback notes regarding formatting, syllabus matching, or revisions" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "type", "grade", "subject", "questions", "keyAnswer", "status", "schoolId"]
+    },
+    "ActivityLog": {
+      "title": "ActivityLog",
+      "description": "Chronological audit trail of changes made to an assessment (uploads, reviews, feedback, edits).",
+      "type": "object",
+      "properties": {
+        "assessmentId": { "type": "string", "description": "ID of the assessment this log pertains to" },
+        "action": { "type": "string", "description": "Name of action (e.g. Created, Claimed, Approved, Revision Requested)" },
+        "userId": { "type": "string", "description": "The UID who executed this action" },
+        "userName": { "type": "string", "description": "Name of the action executor" },
+        "userRole": { "type": "string" },
+        "comment": { "type": "string", "description": "Mod comments or notes attached to action" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["assessmentId", "action", "userId", "userName", "userRole", "createdAt"]
+    },
+    "ArchivedForm": {
+      "title": "ArchivedForm",
+      "description": "Represents a finalized school evaluation and auditing ledger, securely archived and electronically signed off by the school director/principal.",
+      "type": "object",
+      "properties": {
+        "assessmentId": { "type": "string" },
+        "assessmentTitle": { "type": "string" },
+        "assessmentType": { "type": "string" },
+        "grade": { "type": "string" },
+        "subject": { "type": "string" },
+        "schoolName": { "type": "string" },
+        "schoolId": { "type": "string" },
+        "teacherName": { "type": "string" },
+        "teacherFileNo": { "type": "string" },
+        "appointmentYear": { "type": "string" },
+        "directorate": { "type": "string" },
+        "visitDate": { "type": "string" },
+        "subjectName": { "type": "string" },
+        "academicYear": { "type": "string" },
+        "semester": { "type": "string" },
+        "suggestedDevelopment": { "type": "string" },
+        "examinerName": { "type": "string" },
+        "principalName": { "type": "string" },
+        "isSigned": { "type": "boolean" },
+        "signedAt": { "type": "string" },
+        "signedByPrincipalName": { "type": "string" },
+        "signatureQrData": { "type": "string" },
+        "signatureStampUrl": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["assessmentId", "assessmentTitle", "grade", "subject", "schoolName", "schoolId", "isSigned"]
+    },
+    "School": {
+      "title": "School",
+      "description": "Represents an Educational School in the Ministry database",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique school ID" },
+        "nameAr": { "type": "string", "description": "Arabic school name" },
+        "nameEn": { "type": "string", "description": "English school name" },
+        "wilayaId": { "type": "string", "description": "Wilayat ID (e.g. haima, duqm, mahout, jazer)" },
+        "wilayaAr": { "type": "string", "description": "Arabic Wilayat name" },
+        "wilayaEn": { "type": "string", "description": "English Wilayat name" },
+        "stampUrl": { "type": "string", "description": "Base64 data URL or Storage download URL of the official school stamp" },
+        "stampName": { "type": "string", "description": "Original file name of the uploaded stamp" },
+        "stampUploadedAt": { "type": "string", "format": "date-time", "description": "Timestamp when stamp was uploaded" },
+        "stampUploadedBy": { "type": "string", "description": "Admin name or UID who uploaded the stamp" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["nameAr", "nameEn", "wilayaId", "wilayaAr", "wilayaEn"]
+    },
+    "SchoolReport": {
+      "title": "SchoolReport",
+      "description": "Evaluation or operational reports uploaded by MOE Admins for targeted schools",
+      "type": "object",
+      "properties": {
+        "titleAr": { "type": "string", "description": "Arabic title of the report" },
+        "titleEn": { "type": "string", "description": "English title of the report" },
+        "schoolId": { "type": "string", "description": "Target school user identity ID" },
+        "schoolName": { "type": "string", "description": "Target school name" },
+        "semester": { "type": "string", "description": "First or Second semester indicator" },
+        "content": { "type": "string", "description": "Text, remarks, or summary of the evaluation report" },
+        "fileLink": { "type": "string", "description": "Optional attachment download link" },
+        "pdfData": { "type": "string", "description": "Base64 or secure Storage download URL for the uploaded PDF" },
+        "pdfName": { "type": "string", "description": "Uploaded PDF file name" },
+        "pdfSize": { "type": "number", "description": "Uploaded PDF byte size" },
+        "senderId": { "type": "string", "description": "UID of the Admin who dispatched the report" },
+        "senderName": { "type": "string", "description": "Name of the admin sender" },
+        "isRead": { "type": "boolean", "description": "Flag indicating if the school principal has read this report" },
+        "readAt": { "type": "string", "format": "date-time", "description": "Timestamp when the report was opened by the principal" },
+        "readBy": { "type": "string", "description": "The name of the principal who read the report" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["titleAr", "schoolId", "schoolName", "pdfData", "senderId"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profiles store accessible roles (verified school or moderator)"
+    },
+    "schools/{schoolId}": {
+      "schema": "School",
+      "description": "Educational schools details in Al Wusta"
+    },
+    "assessments/{assessmentId}": {
+      "schema": "Assessment",
+      "description": "Tests and quizzes uploaded by schools, claimable and reviews completed by moderators"
+    },
+    "assessments/{assessmentId}/logs/{logId}": {
+      "schema": "ActivityLog",
+      "description": "Log of actions of a specific test/quiz"
+    },
+    "archived_forms/{archiveId}": {
+      "schema": "ArchivedForm",
+      "description": "Archived evaluation forms finalized and signed off by the school Director"
+    },
+    "school_reports/{reportId}": {
+      "schema": "SchoolReport",
+      "description": "Reports dispatched securely by Ministry Admins to specific schools"
+    }
+  }
+}

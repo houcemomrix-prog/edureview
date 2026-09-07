@@ -1,0 +1,6 @@
+{
+  "name": "Oman MOE Test Moderation Portal",
+  "description": "A digital workspace where schools and moderators sign up with @moe.om emails to upload, review, claim, and moderate student tests and quizzes with transparent audit logs.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

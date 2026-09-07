@@ -1,0 +1,258 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net (Pillar 1)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Hardened Global Helpers (Pillar 3) ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Strict Domain & Verification Check (Oman Ministry of Education)
+    function isMoeUser() {
+      return isSignedIn() &&
+             request.auth.token.email_verified == true &&
+             request.auth.token.email.endsWith('@moe.om');
+    }
+
+    function isOwner(userId) {
+      return isMoeUser() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Role-Checking via direct single-user lookup (Safe O(1) evaluation)
+    function getUserRole(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data.role;
+    }
+
+    // --- Users Profiles Rules ---
+    match /users/{userId} {
+      // Allow user themselves, admin or moderators to get details
+      allow get: if isMoeUser() && (isOwner(userId) || getUserRole(request.auth.uid) == 'moderator' || getUserRole(request.auth.uid) == 'admin');
+      
+      // Allow admin to list all users
+      allow list: if isMoeUser() && getUserRole(request.auth.uid) == 'admin';
+
+      // Allow initial registration or admin creation (Role cannot be self-escalated to admin except by admins themselves)
+      allow create: if isMoeUser() && (
+        getUserRole(request.auth.uid) == 'admin' || (
+          isOwner(userId) &&
+          incoming().uid == userId &&
+          incoming().email == request.auth.token.email &&
+          incoming().role in ['school', 'moderator'] &&
+          incoming().name is string && incoming().name.size() <= 200 &&
+          incoming().createdAt == request.time
+        )
+      );
+
+      // Allow users to update their details (except their role) or admins to update details
+      allow update: if isMoeUser() && (
+        getUserRole(request.auth.uid) == 'admin' || (
+          isOwner(userId) &&
+          incoming().uid == userId &&
+          incoming().email == request.auth.token.email &&
+          incoming().role == existing().role &&
+          incoming().name is string && incoming().name.size() <= 200 &&
+          incoming().createdAt == existing().createdAt
+        )
+      );
+
+      // Allow admin to delete users
+      allow delete: if isMoeUser() && getUserRole(request.auth.uid) == 'admin';
+    }
+
+    // --- Assessments Collection Rules (Pillars 2, 4, 5, 8) ---
+    match /assessments/{assessmentId} {
+      // Read & List Security (Pillar 8 - Secure List Queries)
+      // Enforced on list queries to ensure schools only query their own data, and moderators can view all.
+      allow get: if isMoeUser() && (
+        getUserRole(request.auth.uid) == 'moderator' || 
+        existing().schoolId == request.auth.uid
+      );
+
+      allow list: if isMoeUser() && (
+        getUserRole(request.auth.uid) == 'moderator' || 
+        resource.data.schoolId == request.auth.uid
+      );
+
+      // Strict Schema Schema Enforcer Function (Pillar 2)
+      function isValidAssessment(data) {
+        return data.title is string && data.title.size() <= 200 &&
+               data.type in ['test', 'quiz'] &&
+               data.grade is string && data.grade.size() <= 100 &&
+               data.subject is string && data.subject.size() <= 150 &&
+               data.description is string && data.description.size() <= 3000 &&
+               data.questions is string && data.questions.size() <= 25000 &&
+               data.keyAnswer is string && data.keyAnswer.size() <= 25000 &&
+               data.status in ['Pending', 'In Progress', 'Approved', 'Revision Request'] &&
+               data.schoolId is string && data.schoolId == request.auth.uid &&
+               data.schoolName is string && data.schoolName.size() <= 200 &&
+               data.schoolEmail == request.auth.token.email;
+      }
+
+      // Create Assessment Rule
+      allow create: if isMoeUser() && 
+        getUserRole(request.auth.uid) == 'school' && 
+        isValidAssessment(incoming()) && 
+        incoming().status == 'Pending' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        (!('moderatorId' in incoming()) || incoming().moderatorId == null);
+
+      // Update Assessment Rule with Tiered Actions & Delta Guards (Pillars 4 & 5)
+      allow update: if isMoeUser() && (
+        // Action 1: School edits their own assessment (Only when Pending or Needs Revision)
+        (
+          getUserRole(request.auth.uid) == 'school' &&
+          existing().schoolId == request.auth.uid &&
+          (existing().status == 'Pending' || existing().status == 'Revision Request') &&
+          isValidAssessment(incoming()) &&
+          incoming().schoolId == existing().schoolId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          incoming().status == 'Pending' &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'title', 'type', 'grade', 'subject', 'description', 
+            'questions', 'keyAnswer', 'status', 'updatedAt'
+          ])
+        ) ||
+        // Action 2: Moderator claims a Pending assessment
+        (
+          getUserRole(request.auth.uid) == 'moderator' &&
+          existing().status == 'Pending' &&
+          incoming().status == 'In Progress' &&
+          incoming().moderatorId == request.auth.uid &&
+          incoming().moderatorName is string && incoming().moderatorName.size() <= 200 &&
+          incoming().title == existing().title &&
+          incoming().questions == existing().questions &&
+          incoming().keyAnswer == existing().keyAnswer &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'status', 'moderatorId', 'moderatorName', 'updatedAt'
+          ])
+        ) ||
+        // Action 3: Moderator marks Assessment as Approved or Revision Request
+        (
+          getUserRole(request.auth.uid) == 'moderator' &&
+          existing().status == 'In Progress' &&
+          existing().moderatorId == request.auth.uid &&
+          incoming().status in ['Approved', 'Revision Request'] &&
+          incoming().moderatorId == existing().moderatorId &&
+          incoming().updatedAt == request.time &&
+          incoming().feedback is string && incoming().feedback.size() <= 5000 &&
+          incoming().title == existing().title &&
+          incoming().questions == existing().questions &&
+          incoming().keyAnswer == existing().keyAnswer &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'status', 'feedback', 'updatedAt'
+          ])
+        )
+      );
+
+      // Delete capability is blocked for assessments
+      allow delete: if false;
+
+      // --- Sub-collection Logs Rules (Pillar 1 - Master Gate Relational checks) ---
+      match /logs/{logId} {
+        allow read: if isMoeUser() && (
+          getUserRole(request.auth.uid) == 'moderator' || 
+          get(/databases/$(database)/documents/assessments/$(assessmentId)).data.schoolId == request.auth.uid
+        );
+
+        function isValidLog(data) {
+          return data.assessmentId == assessmentId &&
+                 data.action is string && data.action.size() <= 100 &&
+                 data.userId == request.auth.uid &&
+                 data.userName is string && data.userName.size() <= 200 &&
+                 data.userRole in ['school', 'moderator'] &&
+                 data.comment is string && data.comment.size() <= 2000 &&
+                 data.createdAt == request.time;
+        }
+
+        allow create: if isMoeUser() && isValidLog(incoming()) && (
+          // School can create log if they own the assessment
+          (getUserRole(request.auth.uid) == 'school' && get(/databases/$(database)/documents/assessments/$(assessmentId)).data.schoolId == request.auth.uid) ||
+          // Moderator can create logs for reviews
+          (getUserRole(request.auth.uid) == 'moderator')
+        );
+      }
+    }
+
+    // --- Archived Forms Rules ---
+    match /archived_forms/{archiveId} {
+      allow read, list: if isMoeUser() && (
+        getUserRole(request.auth.uid) == 'moderator' || 
+        getUserRole(request.auth.uid) == 'admin' ||
+        resource.data.schoolId == request.auth.uid
+      );
+
+      allow create: if isMoeUser() && (
+        getUserRole(request.auth.uid) == 'school' || 
+        getUserRole(request.auth.uid) == 'moderator' || 
+        getUserRole(request.auth.uid) == 'admin'
+      );
+
+      allow update: if isMoeUser() && (
+        getUserRole(request.auth.uid) == 'school' || 
+        getUserRole(request.auth.uid) == 'admin'
+      );
+    }
+
+    // --- Form Design Settings Rules (Pillar 6) ---
+    match /form_settings/{settingsId} {
+      // Anyone logged in can read the design styles
+      allow read: if isMoeUser();
+      // Only admins can write or modify the global style template
+      allow write: if isMoeUser() && getUserRole(request.auth.uid) == 'admin';
+    }
+
+    // --- Schools Database Rules ---
+    match /schools/{schoolId} {
+      // Anyone logged in can read/list registered educational schools
+      allow read, list: if isMoeUser();
+      // Only administrators can create, update, or delete schools
+      allow write: if isMoeUser() && getUserRole(request.auth.uid) == 'admin';
+    }
+
+    // --- School Reports Secure Rules ---
+    match /school_reports/{reportId} {
+      allow get: if isMoeUser() && (
+        getUserRole(request.auth.uid) == 'admin' ||
+        existing().schoolId == request.auth.uid
+      );
+
+      allow list: if isMoeUser() && (
+        getUserRole(request.auth.uid) == 'admin' ||
+        resource.data.schoolId == request.auth.uid
+      );
+
+      allow create, delete: if isMoeUser() && getUserRole(request.auth.uid) == 'admin';
+
+      allow update: if isMoeUser() && (
+        getUserRole(request.auth.uid) == 'admin' || (
+          getUserRole(request.auth.uid) == 'school' &&
+          existing().schoolId == request.auth.uid &&
+          incoming().isRead == true &&
+          incoming().readBy is string &&
+          incoming().readAt is string &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['isRead', 'readAt', 'readBy', 'updatedAt'])
+        )
+      );
+    }
+  }
+}

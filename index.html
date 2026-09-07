@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+    <title>Oman MOE Test Moderation Portal - سلطنة عُمان</title>
+    <meta name="description" content="A digital workspace where schools and moderators sign up with @moe.om emails to upload, review, claim, and moderate student tests and quizzes with transparent audit logs." />
+    <meta property="og:title" content="Oman MOE Test Moderation Portal - سلطنة عُمان" />
+    <meta property="og:description" content="A digital workspace where schools and moderators sign up with @moe.om emails to upload, review, claim, and moderate student tests and quizzes with transparent audit logs." />
+    <script>
+      (function() {
+        const isHmrError = (text) => {
+          const str = String(text || '').toLowerCase();
+          return str.includes('websocket') || str.includes('hmr') || str.includes('ws://') || str.includes('wss://');
+        };
+
+        // Suppress benign websocket and HMR errors from bubble handlers
+        window.addEventListener('error', function(e) {
+          const errMsg = e.message || (e.error && e.error.message) || '';
+          if (isHmrError(errMsg)) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+          }
+        }, true);
+
+        window.addEventListener('unhandledrejection', function(e) {
+          const reason = e.reason;
+          const reasonStr = reason ? (reason.message || String(reason)) : '';
+          if (isHmrError(reasonStr)) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+          }
+        }, true);
+
+        // Hide the benign websocket warning logs from console
+        const originalConsoleError = console.error;
+        console.error = function(...args) {
+          const msg = args.map(arg => {
+            try {
+              return String(arg || '');
+            } catch (e) {
+              return '';
+            }
+          }).join(' ');
+          
+          if (isHmrError(msg)) {
+            return;
+          }
+          originalConsoleError.apply(console, args);
+        };
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
