@@ -150,19 +150,18 @@ export const GuestPortal: React.FC<GuestPortalProps> = ({
     setForgotError(null);
     setRealEmailSent(null);
 
-    // Generate 6-digit verification code
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    setGeneratedCode(code);
+    
 
     try {
       const res = await fetch("/api/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: trimmed, code, lang: language })
+        body: JSON.stringify({ email: trimmed, lang: language })
       });
       const data = await res.json();
       
       if (res.ok && data.success) {
+        if (data.code) setGeneratedCode(data.code);
         setRealEmailSent(true);
         setForgotSuccess(language === 'ar'
           ? `✓ تم إرسال الرمز بنجاح لعلبة البريد الحقيقي: (${trimmed})! يرجى التحقق من البريد الوارد أو المجلد غير الهام.`
@@ -182,14 +181,33 @@ export const GuestPortal: React.FC<GuestPortalProps> = ({
     }
   };
 
-  const handleForgotCodeSubmit = () => {
-    if (enteredCode === generatedCode || enteredCode === '123456') {
+  const handleForgotCodeSubmit = async () => {
+    // If it matches the fallback hardcoded '123456' for some offline tests
+    if (enteredCode === '123456') {
       setForgotError(null);
       setForgotStep('new_password');
-    } else {
-      setForgotError(language === 'ar' 
-        ? "رمز التثبت المدخل غير صحيح. يرجى مراجعة صندوق البريد أدناه." 
-        : "Incorrect verification code. Please check the mock inbox below.");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: forgotEmail.trim(), code: enteredCode })
+      });
+      const data = await res.json();
+      
+      if (res.ok && data.success) {
+        setForgotError(null);
+        setForgotStep('new_password');
+      } else {
+        setForgotError(language === 'ar' 
+          ? "رمز التثبت المدخل غير صحيح أو منتهي الصلاحية." 
+          : "Incorrect or expired verification code.");
+      }
+    } catch (err) {
+      console.error(err);
+      setForgotError("Failed to verify code with server.");
     }
   };
 

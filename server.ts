@@ -1,3 +1,7 @@
+import { Resend } from 'resend';
+
+// Store OTPs temporarily
+const otpStorage = new Map<string, { code: string; expiresAt: number }>();
 import express from "express";
 import path from "path";
 import { GoogleGenAI } from "@google/genai";
@@ -25,119 +29,6 @@ function getGeminiClient(): GoogleGenAI {
 }
 
 // Global utility helper to send a Real OTP email
-async function sendOfficialOTPEmail(email: string, code: string, lang: 'ar' | 'en' = 'ar'): Promise<{ success: boolean; provider: string; details?: string }> {
-  const provider = process.env.EMAIL_PROVIDER || 'smtp';
-  const resendKey = process.env.RESEND_API_KEY;
-  const smtpHost = process.env.SMTP_HOST;
-  const smtpPort = process.env.SMTP_PORT || '587';
-  const smtpUser = process.env.SMTP_USER;
-  const smtpPass = process.env.SMTP_PASS;
-  const fromEmail = process.env.EMAIL_FROM || "security-auth@moe.om";
-
-  const isSMTPConfigured = !!(smtpHost && smtpUser && smtpPass);
-  const isResendConfigured = !!resendKey;
-
-  const subject = lang === 'ar' 
-    ? "رمز التحقق الموثّق لإعادة تعيين كلمة مرور البوابة التعليمية" 
-    : "Security OTP Verification Code - MoE Administrative Portal";
-
-  const emailHtml = lang === 'ar' ? `
-    <div style="direction: rtl; text-align: right; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-      <div style="background-color: #821315; padding: 26px 20px; text-align: center; color: white;">
-        <h2 style="margin: 0; font-size: 21px; font-weight: 800; letter-spacing: -0.5px;">سلطنة عمان - وزارة التعليم</h2>
-        <p style="margin: 4px 0 0 0; font-size: 11px; opacity: 0.9; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">البوابة التعليمية الموحدة للمحتوى والامتحانات</p>
-      </div>
-      <div style="padding: 35px 25px; background-color: #ffffff;">
-        <p style="font-size: 15px; color: #1e293b; line-height: 1.6; font-weight: bold; margin-bottom: 15px;">أهلاً بك في بوابة سلطنة عمان الأكاديمية المشتركة،</p>
-        <p style="font-size: 13.5px; color: #334155; line-height: 1.6; margin-bottom: 25px;">لقد تلقينا طلباً لتجاوز وتحديث رمز المرور الأمني الخاص بملفك التربوي. يرجى إدخال رمز الأمان الفريد التالي في البوابة لإتمام تعيين كلمة السر الجديدة:</p>
-        
-        <div style="background-color: #f8fafc; border: 2px dashed #821315; border-radius: 14px; padding: 24px; text-align: center; margin-bottom: 25px;">
-          <span style="font-family: monospace; font-size: 36px; font-weight: 900; color: #821315; letter-spacing: 10px;">${code}</span>
-        </div>
-
-        <div style="background-color: #fffbeb; border: 1px solid #fef3c7; border-radius: 10px; padding: 12px 15px; margin-bottom: 20px;">
-          <p style="font-size: 11.5px; color: #b45309; font-weight: bold; margin: 0; line-height: 1.5;">🔒 تنبيه أمني هام جداً:</p>
-          <p style="font-size: 11px; color: #d97706; margin: 3px 0 0 0; line-height: 1.5;">هذا الرمز مخصص للاستخدام الأحادي وصالح لمستقبلك الشخصي فقط. لا تفصح عن هذا الرمز لأي طرف خارجي. طاقم الإشراف والتحقق بالوزارة لن يطلب منك هذا الرمز أبداً تحت أي ظرف.</p>
-        </div>
-
-        <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 25px 0;">
-        <p style="font-size: 11px; color: #94a3b8; line-height: 1.5; margin: 0;">إذا لم تكن أنت من بادر بإجراء هذا الطلب المباشر، يمكنك تجاهل هذه الرسالة حيث لم تطرأ أي تغييرات أمنية غير مصرح بها على حسابك حتى الآن.</p>
-      </div>
-      <div style="background-color: #f8fafc; padding: 18px; text-align: center; border-top: 1px solid #f1f5f9; font-size: 10.5px; color: #94a3b8; font-family: sans-serif;">
-        تم إصدار هذه الرسالة الآمنة تلقائياً بنظام التثبت المشترك. © 2026 سلطنة عمان. جميع الحقوق محفوظة.
-      </div>
-    </div>
-  ` : `
-    <div style="direction: ltr; text-align: left; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-      <div style="background-color: #821315; padding: 26px 20px; text-align: center; color: white;">
-        <h2 style="margin: 0; font-size: 19px; font-weight: 800; letter-spacing: -0.5px;">Sultanate of Oman - Ministry of Education</h2>
-        <p style="margin: 4px 0 0 0; font-size: 10px; opacity: 0.9; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">Unified Educational Portal Security Hub</p>
-      </div>
-      <div style="padding: 35px 25px; background-color: #ffffff;">
-        <p style="font-size: 15px; color: #1e293b; line-height: 1.6; font-weight: bold; margin-bottom: 15px;">Greetings Academic Portal User,</p>
-        <p style="font-size: 13.5px; color: #334155; line-height: 1.6; margin-bottom: 25px;">We received a request to override the academic password for your profile. Please use the following official 6-digit verification code to establish your password:</p>
-        
-        <div style="background-color: #f8fafc; border: 2px dashed #821315; border-radius: 14px; padding: 24px; text-align: center; margin-bottom: 25px;">
-          <span style="font-family: monospace; font-size: 36px; font-weight: 900; color: #821315; letter-spacing: 10px;">${code}</span>
-        </div>
-
-        <div style="background-color: #fffbeb; border: 1px solid #fef3c7; border-radius: 10px; padding: 12px 15px; margin-bottom: 20px;">
-          <p style="font-size: 11.5px; color: #b45309; font-weight: bold; margin: 0; line-height: 1.5;">🔒 Critical Security Warning:</p>
-          <p style="font-size: 11px; color: #d97706; margin: 3px 0 0 0; line-height: 1.5;">This registration token expires in 15 minutes. Never disclose this transaction code to anyone. Ministry staff will never ask for your authentication keys.</p>
-        </div>
-
-        <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 25px 0;">
-        <p style="font-size: 11px; color: #94a3b8; line-height: 1.5; margin: 0;">If you did not initiate this authentication request, no further actions are needed. Your lock credentials remain intact.</p>
-      </div>
-      <div style="background-color: #f8fafc; padding: 18px; text-align: center; border-top: 1px solid #f1f5f9; font-size: 10.5px; color: #94a3b8; font-family: sans-serif;">
-        Automatic dispatch statement issued by the Oman MoE Security Portal. © 2026 Sultanate of Oman.
-      </div>
-    </div>
-  `;
-
-  if (isResendConfigured && (provider === 'resend' || !isSMTPConfigured)) {
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${resendKey}`
-      },
-      body: JSON.stringify({
-        from: `Oman MoE Security <${fromEmail}>`,
-        to: [email],
-        subject: subject,
-        html: emailHtml
-      })
-    });
-
-    if (!res.ok) {
-      const errorText = await res.text();
-      return { success: false, provider: 'resend', details: errorText };
-    }
-    return { success: true, provider: 'resend' };
-  } else if (isSMTPConfigured) {
-    const transporter = nodemailer.createTransport({
-      host: smtpHost,
-      port: parseInt(smtpPort),
-      secure: smtpPort === '465', // true for 465, false for other ports
-      auth: {
-        user: smtpUser,
-        pass: smtpPass
-      }
-    });
-
-    await transporter.sendMail({
-      from: `"Oman MoE Security" <${smtpUser}>`,
-      to: email,
-      subject: subject,
-      html: emailHtml
-    });
-    return { success: true, provider: 'smtp' };
-  } else {
-    return { success: false, provider: 'none', details: 'No server-side credentials set' };
-  }
-}
-
 async function startServer() {
   const app = express();
   const PORT = process.env.PORT || 3000;
@@ -150,32 +41,113 @@ async function startServer() {
     res.json({ status: "ok", time: new Date().toISOString() });
   });
 
-  // API Route to dispatch real email verification codes via SMTP or Resend
+  
+  // API Route to dispatch real email verification codes via Resend
   app.post("/api/send-otp", async (req, res) => {
-    const { email, code, lang } = req.body;
-    if (!email || !code) {
-      res.status(400).json({ success: false, error: "Missing required params: email, code." });
+    const { email, lang } = req.body;
+    if (!email) {
+      res.status(400).json({ success: false, error: "Missing required params: email." });
       return;
     }
 
     try {
-      console.log(`Attempting to send real OTP ${code} to ${email}...`);
-      const sendResult = await sendOfficialOTPEmail(email, code, lang);
+      console.log(`Attempting to generate and send OTP to ${email}...`);
       
-      if (sendResult.success) {
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = Date.now() + 15 * 60 * 1000; // 15 mins
+      otpStorage.set(email, { code, expiresAt });
+
+      const resendKey = process.env.RESEND_API_KEY;
+      const fromEmail = process.env.EMAIL_FROM || "security-auth@moe.om";
+      
+      if (!resendKey) {
+        // Fallback for dev mode if no key provided
         res.status(200).json({ 
           success: true, 
-          provider: sendResult.provider,
-          message: `Email successfully dispatched to ${email} via ${sendResult.provider}` 
+          code, // Returning code for sandbox testing
+          message: "No Resend key provided. OTP generated for sandbox testing." 
         });
-      } else {
-        res.status(200).json({ 
-          success: false, 
-          provider: sendResult.provider, 
-          error: sendResult.details || "No SMTP or Resend credentials provided in Server environment variables." 
-        });
+        return;
       }
-    } catch (err: any) {
+
+      const resend = new Resend(resendKey);
+      
+      const subject = lang === 'ar' 
+        ? "رمز التحقق الموثّق لإعادة تعيين كلمة مرور البوابة التعليمية" 
+        : "Security OTP Verification Code - MoE Administrative Portal";
+
+      const emailHtml = lang === 'ar' ? `
+        <div style="direction: rtl; text-align: right; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+          <div style="background-color: #821315; padding: 26px 20px; text-align: center; color: white;">
+            <h2 style="margin: 0; font-size: 21px; font-weight: 800; letter-spacing: -0.5px;">سلطنة عمان - وزارة التعليم</h2>
+            <p style="margin: 4px 0 0 0; font-size: 11px; opacity: 0.9; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">البوابة التعليمية الموحدة للمحتوى والامتحانات</p>
+          </div>
+          <div style="padding: 30px 25px;">
+            <h3 style="color: #0f172a; margin-top: 0; font-size: 16px;">مرحباً بك في بوابة الإدارة الشاملة،</h3>
+            <p style="color: #475569; font-size: 13px; line-height: 1.6;">لقد تلقينا طلباً لتوثيق وتعديل الصلاحيات الخاصة بحسابك الأكاديمي. يرجى استخدام رمز التوثيق الرسمي التالي المكون من 6 أرقام لتأكيد هويتك:</p>
+            
+            <div style="background-color: #f8fafc; border: 2px dashed #821315; border-radius: 14px; padding: 24px; text-align: center; margin-bottom: 25px;">
+              <span style="font-family: monospace; font-size: 36px; font-weight: 900; color: #821315; letter-spacing: 10px;">${code}</span>
+            </div>
+            
+            <div style="background-color: #fffbeb; border: 1px solid #fef3c7; border-radius: 10px; padding: 12px 15px; margin-bottom: 20px;">
+              <p style="font-size: 11.5px; color: #b45309; font-weight: bold; margin: 0; line-height: 1.5;">🔒 تحذير أمني هام:</p>
+              <p style="font-size: 11px; color: #d97706; margin: 3px 0 0 0; line-height: 1.5;">صلاحية هذا الرمز تنتهي خلال 15 دقيقة. يمنع منعاً باتاً مشاركة رمز التحقق مع أي شخص آخر، علماً بأن موظفي الوزارة لن يطلبوا منك الإفصاح عن أرقامك السرية أبداً.</p>
+            </div>
+            
+            <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 25px 0;">
+            <p style="font-size: 11px; color: #94a3b8; line-height: 1.5; margin: 0;">إذا لم تقم بطلب هذا التوثيق، لا حاجة لاتخاذ أي إجراء، وستبقى بياناتك بأمان تام.</p>
+          </div>
+          <div style="background-color: #f8fafc; padding: 18px; text-align: center; border-top: 1px solid #f1f5f9; font-size: 10.5px; color: #94a3b8; font-family: sans-serif;">
+            تم إصدار هذه الرسالة تلقائياً من نظام الأمان التابع لوزارة التربية والتعليم. © 2026 سلطنة عمان.
+          </div>
+        </div>
+      ` : `
+        <div style="direction: ltr; text-align: left; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+          <div style="background-color: #821315; padding: 26px 20px; text-align: center; color: white;">
+            <h2 style="margin: 0; font-size: 21px; font-weight: 800; letter-spacing: -0.5px;">Sultanate of Oman - MoE</h2>
+            <p style="margin: 4px 0 0 0; font-size: 11px; opacity: 0.9; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">Unified Educational Portal</p>
+          </div>
+          <div style="padding: 30px 25px;">
+            <h3 style="color: #0f172a; margin-top: 0; font-size: 16px;">Welcome to the Administrative Gateway,</h3>
+            <p style="color: #475569; font-size: 13px; line-height: 1.6;">We have received a request to override the academic password for your profile. Please use the following official 6-digit verification code to establish your password:</p>
+            
+            <div style="background-color: #f8fafc; border: 2px dashed #821315; border-radius: 14px; padding: 24px; text-align: center; margin-bottom: 25px;">
+              <span style="font-family: monospace; font-size: 36px; font-weight: 900; color: #821315; letter-spacing: 10px;">${code}</span>
+            </div>
+            
+            <div style="background-color: #fffbeb; border: 1px solid #fef3c7; border-radius: 10px; padding: 12px 15px; margin-bottom: 20px;">
+              <p style="font-size: 11.5px; color: #b45309; font-weight: bold; margin: 0; line-height: 1.5;">🔒 Critical Security Warning:</p>
+              <p style="font-size: 11px; color: #d97706; margin: 3px 0 0 0; line-height: 1.5;">This registration token expires in 15 minutes. Never disclose this transaction code to anyone. Ministry staff will never ask for your authentication keys.</p>
+            </div>
+            
+            <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 25px 0;">
+            <p style="font-size: 11px; color: #94a3b8; line-height: 1.5; margin: 0;">If you did not initiate this authentication request, no further actions are needed. Your lock credentials remain intact.</p>
+          </div>
+          <div style="background-color: #f8fafc; padding: 18px; text-align: center; border-top: 1px solid #f1f5f9; font-size: 10.5px; color: #94a3b8; font-family: sans-serif;">
+            Automatic dispatch statement issued by the Oman MoE Security Portal. © 2026 Sultanate of Oman.
+          </div>
+        </div>
+      `;
+
+      const { data, error } = await resend.emails.send({
+        from: `Oman MoE Security <${fromEmail}>`,
+        to: [email],
+        subject: subject,
+        html: emailHtml
+      });
+
+      if (error) {
+        return res.status(500).json({ success: false, error: error.message });
+      }
+
+      res.status(200).json({ 
+        success: true, 
+        message: `Email successfully dispatched to ${email}`,
+        code // returning code temporarily so the sandbox frontend still displays it
+      });
+
+    } catch (err) {
       console.error("Email dispatch failure detail:", err);
       res.status(500).json({ 
         success: false, 
@@ -184,6 +156,32 @@ async function startServer() {
     }
   });
 
+  app.post("/api/verify-otp", async (req, res) => {
+    const { email, code } = req.body;
+    if (!email || !code) {
+      res.status(400).json({ success: false, error: "Missing email or code." });
+      return;
+    }
+
+    const stored = otpStorage.get(email);
+    if (!stored) {
+      res.status(400).json({ success: false, error: "No OTP found or expired." });
+      return;
+    }
+
+    if (Date.now() > stored.expiresAt) {
+      otpStorage.delete(email);
+      res.status(400).json({ success: false, error: "OTP has expired." });
+      return;
+    }
+
+    if (stored.code === code) {
+      otpStorage.delete(email);
+      res.status(200).json({ success: true, message: "OTP verified successfully." });
+    } else {
+      res.status(400).json({ success: false, error: "Invalid OTP." });
+    }
+  });
 
   // Download the official moderation PDF guidelines uploaded by the user
   app.get("/api/download-guidelines-pdf", (req, res) => {
