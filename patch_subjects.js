@@ -1,0 +1,38 @@
+const fs = require('fs');
+let dbCode = fs.readFileSync('src/services/db.ts', 'utf8');
+
+const subjectsCode = `
+const DEFAULT_SUBJECTS = [
+  'Arabic Language', 'English Language', 'Mathematics', 
+  'Science', 'Physics', 'Chemistry', 'Biology', 
+  'Islamic Studies', 'Social Studies', 'Information Technology',
+  'Applied Sciences', 'Individual Skills'
+];
+
+export async function getSubjects(): Promise<string[]> {
+  try {
+    const docRef = doc(db, 'settings', 'subjects');
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return docSnap.data().list || DEFAULT_SUBJECTS;
+    }
+    return DEFAULT_SUBJECTS;
+  } catch (err) {
+    console.error("Error getting subjects:", err);
+    return DEFAULT_SUBJECTS;
+  }
+}
+
+export async function saveSubjects(list: string[]): Promise<void> {
+  try {
+    const docRef = doc(db, 'settings', 'subjects');
+    await setDoc(docRef, { list, updatedAt: new Date().toISOString() }, { merge: true });
+  } catch (err) {
+    console.error("Error saving subjects:", err);
+    throw err;
+  }
+}
+`;
+
+dbCode = dbCode + "\n" + subjectsCode;
+fs.writeFileSync('src/services/db.ts', dbCode);

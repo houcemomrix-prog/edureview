@@ -1,0 +1,13 @@
+// --- Teacher Notifications ---
+    match /teacher_notifications/{notificationId} {
+      allow get, list: if isMoeUser() && (
+        getUserRole(request.auth.uid) == 'school' && resource.data.teacherId == request.auth.uid
+      );
+      allow create: if isMoeUser() && getUserRole(request.auth.uid) == 'school';
+      allow update: if isMoeUser() && (
+        getUserRole(request.auth.uid) == 'school' && 
+        existing().teacherId == request.auth.uid &&
+        incoming().read == true &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['read'])
+      );
+    }

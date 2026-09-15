@@ -12,10 +12,10 @@ export const translations = {
     liveGateway: "Live Gateway",
     liveOfficialGateway: "Live Official Gateway",
     quickRole: "Quick Switch Role (Sandbox)",
-    alAzaibaSchool: "Al-Azaiba School",
-    schoolRep: "School Representative",
+    alAzaibaSchool: "Duqm Basic Education School",
+    schoolRep: "Duqm School Principal",
     salemAlHarthy: "Salem Al-Harthy",
-    subjectSupervisor: "Subject Supervisor",
+    subjectSupervisor: "Al Wusta Governorate Auditor",
     khalidAlAmri: "Khalid Al-Amri",
     portalAdmin: "Portal Admin",
     signOut: "Sign Out & Disconnect",
@@ -55,7 +55,7 @@ export const translations = {
     academicRole: "Academic Role Choice",
     fullName: "Full Academic Name (Oman ID Match)",
     schoolNameLabel: "School Representation Name",
-    schoolNamePlaceholder: "e.g. Al-Azaiba Basic Education School",
+    schoolNamePlaceholder: "e.g. Duqm Basic Education School",
     assignedSubject: "Assigned Subject Domain",
     authorizeCaps: "Authorize Representative Capabilities",
     signingUp: "Registering Profile...",
@@ -233,10 +233,10 @@ export const translations = {
     liveGateway: "البوابة الرسمية المباشرة",
     liveOfficialGateway: "البوابة الرسمية الفعالة",
     quickRole: "تبديل سريع للمستخدم (بيئة تجريبية)",
-    alAzaibaSchool: "مدرسة العذيبة للتعليم الأساسي",
-    schoolRep: "ممثل المدرسة",
+    alAzaibaSchool: "مدرسة الدقم للتعليم الأساسي",
+    schoolRep: "مدير مدرسة الدقم",
     salemAlHarthy: "سالم الحارثي",
-    subjectSupervisor: "مدقق مادة..........",
+    subjectSupervisor: "مشرف ومدقق محافظة الوسطى",
     khalidAlAmri: "خالد العامري",
     portalAdmin: "رئيس البوابة والأنظمة",
     signOut: "تسجيل الخروج وقطع الاتصال",
@@ -276,7 +276,7 @@ export const translations = {
     academicRole: "الدور الأكاديمي والمهني",
     fullName: "الاسم الأكاديمي الكامل (مطابق للهوية العمانية)",
     schoolNameLabel: "اسم المؤسسة التعليمية التابع لها",
-    schoolNamePlaceholder: "على سبيل المثال: مدرسة العذيبة للتعليم الأساسي",
+    schoolNamePlaceholder: "على سبيل المثال: مدرسة الدقم للتعليم الأساسي",
     assignedSubject: "تخصص الإشراف التربوي الرئيسي",
     authorizeCaps: "تأكيد وتخويل الصلاحيات المهنية",
     signingUp: "جاري إنشاء الحساب التربوي الموثق...",
@@ -452,12 +452,165 @@ export function getTranslatedText(key: keyof typeof translations.en, lang: Langu
   return (dict[key] as string) || (translations.en[key] as string) || String(key);
 }
 
+// Canonical subject definitions with English, Arabic, and synonyms
+const SUBJECT_DICTIONARY: Record<string, { en: string; ar: string; aliases: string[] }> = {
+  'Arabic Language': {
+    en: 'Arabic Language',
+    ar: 'اللغة العربية',
+    aliases: ['عربي', 'لغة عربية', 'اللغة العربية', 'arabic', 'arabic language']
+  },
+  'English Language': {
+    en: 'English Language',
+    ar: 'اللغة الإنجليزية',
+    aliases: ['انجليزي', 'لغة إنجليزية', 'لغة انجليزية', 'اللغة الانجليزية', 'english', 'english language']
+  },
+  'Mathematics': {
+    en: 'Mathematics',
+    ar: 'الرياضيات',
+    aliases: ['رياضيات', 'الرياضيات', 'math', 'maths', 'mathematics']
+  },
+  'Science': {
+    en: 'Science',
+    ar: 'العلوم العامة',
+    aliases: ['علوم', 'العلوم', 'علوم عامة', 'العلوم العامة', 'general science', 'science']
+  },
+  'Physics': {
+    en: 'Physics',
+    ar: 'الفيزياء',
+    aliases: ['فيزياء', 'الفيزياء', 'physics']
+  },
+  'Chemistry': {
+    en: 'Chemistry',
+    ar: 'الكيمياء',
+    aliases: ['كيمياء', 'الكيمياء', 'chemistry']
+  },
+  'Biology': {
+    en: 'Biology',
+    ar: 'الأحياء',
+    aliases: ['احياء', 'أحياء', 'الأحياء', 'الاحياء', 'biology']
+  },
+  'Islamic Studies': {
+    en: 'Islamic Studies',
+    ar: 'التربية الإسلامية',
+    aliases: ['اسلامية', 'تربية اسلامية', 'التربية الاسلامية', 'التربية الإسلامية', 'دراسات إسلامية', 'islamic', 'islamic studies']
+  },
+  'Social Studies': {
+    en: 'Social Studies',
+    ar: 'الدراسات الاجتماعية',
+    aliases: ['دراسات', 'اجتماعيات', 'دراسات اجتماعية', 'الدراسات الاجتماعية', 'social', 'social studies']
+  },
+  'Information Technology': {
+    en: 'Information Technology',
+    ar: 'تقنية المعلومات',
+    aliases: ['حاسوب', 'تقنية', 'تقنية المعلومات', 'it', 'information technology', 'computer']
+  },
+  'Applied Sciences': {
+    en: 'Applied Sciences',
+    ar: 'العلوم التطبيقية',
+    aliases: ['علوم تطبيقية', 'العلوم التطبيقية', 'applied sciences']
+  },
+  'Individual Skills': {
+    en: 'Individual Skills',
+    ar: 'المهارات الفردية',
+    aliases: ['مهارات فردية', 'المهارات الفردية', 'individual skills', 'فنون تشكيلية', 'رياضة مدرسية', 'موسيقى']
+  }
+};
+
+/**
+ * Checks if a subject string denotes a universal/all-subject scope
+ */
+export function isUniversalSubject(subject?: string | null): boolean {
+  if (!subject) return true;
+  const s = subject.toLowerCase().trim();
+  return (
+    s === '' ||
+    s === 'all' ||
+    s === 'all subjects' ||
+    s === 'all_subjects' ||
+    s === 'جميع المواد' ||
+    s === 'كافة المواد' ||
+    s.includes('شامل') ||
+    s.includes('كافة') ||
+    s.includes('جميع') ||
+    s.includes('all subjects')
+  );
+}
+
+/**
+ * Resolves any subject name or synonym to its canonical English key
+ */
+export function getCanonicalSubject(subjectName?: string | null): string | null {
+  if (!subjectName || isUniversalSubject(subjectName)) return null;
+  const trimmed = subjectName.trim().toLowerCase();
+  
+  for (const [canonicalKey, entry] of Object.entries(SUBJECT_DICTIONARY)) {
+    if (canonicalKey.toLowerCase() === trimmed) return canonicalKey;
+    if (entry.en.toLowerCase() === trimmed) return canonicalKey;
+    if (entry.ar.toLowerCase() === trimmed) return canonicalKey;
+    if (entry.aliases.some(a => a.toLowerCase() === trimmed)) return canonicalKey;
+  }
+
+  // Check partial/contains match for Arabic or English
+  for (const [canonicalKey, entry] of Object.entries(SUBJECT_DICTIONARY)) {
+    if (trimmed.includes(entry.en.toLowerCase()) || trimmed.includes(entry.ar.toLowerCase())) {
+      return canonicalKey;
+    }
+  }
+
+  return subjectName.trim();
+}
+
+/**
+ * Determines whether two subjects match (handling Arabic/English synonyms,
+ * universal auditor privileges, and multi-disciplinary specialty lists).
+ */
+export function isSubjectMatch(subjectA?: string | null, subjectB?: string | null): boolean {
+  // If either subject is universal or unspecified, they match
+  if (isUniversalSubject(subjectA) || isUniversalSubject(subjectB)) {
+    return true;
+  }
+  if (!subjectA || !subjectB) return true;
+
+  const aTrim = subjectA.trim().toLowerCase();
+  const bTrim = subjectB.trim().toLowerCase();
+
+  // Direct equality
+  if (aTrim === bTrim) return true;
+
+  // Canonical resolution
+  const canA = getCanonicalSubject(subjectA);
+  const canB = getCanonicalSubject(subjectB);
+  if (canA && canB && canA === canB) return true;
+
+  // Normalize common Arabic letters (alif forms, ta marbuta)
+  const normAr = (text: string) => 
+    text.replace(/[أإآ]/g, 'ا')
+        .replace(/ة/g, 'ه')
+        .replace(/\s+العامة$/, '')
+        .replace(/^ال/, '')
+        .trim();
+
+  if (normAr(aTrim) === normAr(bTrim)) return true;
+
+  // Handle multi-subject composite strings (e.g. "Mathematics & Science")
+  if (aTrim.includes(bTrim) || bTrim.includes(aTrim)) return true;
+  if (canA && bTrim.includes(canA.toLowerCase())) return true;
+  if (canB && aTrim.includes(canB.toLowerCase())) return true;
+
+  return false;
+}
+
 // Subject converter based on lang
 export function translateSubject(subjectName: string, lang: Language): string {
-  if (!subjectName) return lang === 'ar' ? 'جميع المواد' : 'All Subjects';
-  if (subjectName === 'All Subjects' || subjectName === 'all' || subjectName === 'جميع المواد') {
+  if (!subjectName || isUniversalSubject(subjectName)) {
     return lang === 'ar' ? 'جميع المواد' : 'All Subjects';
   }
+  
+  const canonical = getCanonicalSubject(subjectName);
+  if (canonical && SUBJECT_DICTIONARY[canonical]) {
+    return lang === 'ar' ? SUBJECT_DICTIONARY[canonical].ar : SUBJECT_DICTIONARY[canonical].en;
+  }
+
   const dict = translations[lang];
   if (dict && subjectName in dict) {
     return (dict as any)[subjectName];

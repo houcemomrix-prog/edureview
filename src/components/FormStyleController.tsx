@@ -84,7 +84,7 @@ export function FormStyleController({ language, onSuccess }: FormStyleController
   };
 
   const handleReset = () => {
-    if (window.confirm(language === 'ar' ? 'هل أنت متأكد من استعادة قيم التصميم الافتراضية المعتمدة لوزارة التربية والتعليم؟' : 'Are you sure you want to restore default Ministry styles?')) {
+    if (window.confirm(language === 'ar' ? 'هل أنت متأكد من استعادة قيم التصميم الافتراضية المعتمدة لوزارة التعليم؟' : 'Are you sure you want to restore default Ministry styles?')) {
       setSettings(DEFAULT_FORM_STYLES);
       onSuccess(
         language === 'ar' 
@@ -134,7 +134,7 @@ export function FormStyleController({ language, onSuccess }: FormStyleController
 
   const colorPresets = [
     { name: language === 'ar' ? 'عنابي الملكي العماني' : 'Royal MOE Burgundy', primary: '#821315', secondary: '#051C3F' },
-    { name: language === 'ar' ? 'أخضر وزارة التربية' : 'Sultanate Emerald', primary: '#035c3e', secondary: '#2d3748' },
+    { name: language === 'ar' ? 'أخضر وزارة التعليم' : 'Sultanate Emerald', primary: '#035c3e', secondary: '#2d3748' },
     { name: language === 'ar' ? 'كحلي دبلوماسي' : 'Diplomatic Sapphire', primary: '#0f2c59', secondary: '#41444b' },
     { name: language === 'ar' ? 'رمادي صناعي كلاسيكي' : 'Classic Industrial Slate', primary: '#475569', secondary: '#1e293b' }
   ];
@@ -256,7 +256,7 @@ export function FormStyleController({ language, onSuccess }: FormStyleController
             <button
               type="button"
               onClick={() => setActiveSubTab('typography')}
-              className={`py-1.5 px-2 rounded-xl text-[10.5px] font-black tracking-wide border-b-2 transition-all cursor-pointer ${
+              className={`py-1.5 px-2 rounded-xl text-[10.5px] font-black border-b-2 transition-all cursor-pointer ${
                 activeSubTab === 'typography' 
                   ? 'border-purple-600 bg-purple-50 text-purple-700' 
                   : 'border-transparent text-slate-400 hover:text-slate-700 hover:bg-slate-50'
@@ -270,7 +270,7 @@ export function FormStyleController({ language, onSuccess }: FormStyleController
             <button
               type="button"
               onClick={() => setActiveSubTab('colors')}
-              className={`py-1.5 px-2 rounded-xl text-[10.5px] font-black tracking-wide border-b-2 transition-all cursor-pointer ${
+              className={`py-1.5 px-2 rounded-xl text-[10.5px] font-black border-b-2 transition-all cursor-pointer ${
                 activeSubTab === 'colors' 
                   ? 'border-purple-600 bg-purple-50 text-purple-700' 
                   : 'border-transparent text-slate-400 hover:text-slate-700 hover:bg-slate-50'
@@ -284,7 +284,7 @@ export function FormStyleController({ language, onSuccess }: FormStyleController
             <button
               type="button"
               onClick={() => setActiveSubTab('dimensions')}
-              className={`py-1.5 px-2 rounded-xl text-[10.5px] font-black tracking-wide border-b-2 transition-all cursor-pointer ${
+              className={`py-1.5 px-2 rounded-xl text-[10.5px] font-black border-b-2 transition-all cursor-pointer ${
                 activeSubTab === 'dimensions' 
                   ? 'border-purple-600 bg-purple-50 text-purple-700' 
                   : 'border-transparent text-slate-400 hover:text-slate-700 hover:bg-slate-50'
@@ -298,7 +298,7 @@ export function FormStyleController({ language, onSuccess }: FormStyleController
             <button
               type="button"
               onClick={() => setActiveSubTab('titles')}
-              className={`py-1.5 px-2 rounded-xl text-[10.5px] font-black tracking-wide border-b-2 transition-all cursor-pointer ${
+              className={`py-1.5 px-2 rounded-xl text-[10.5px] font-black border-b-2 transition-all cursor-pointer ${
                 activeSubTab === 'titles' 
                   ? 'border-purple-600 bg-purple-50 text-purple-700' 
                   : 'border-transparent text-slate-400 hover:text-slate-700 hover:bg-slate-50'
@@ -312,7 +312,7 @@ export function FormStyleController({ language, onSuccess }: FormStyleController
             <button
               type="button"
               onClick={() => setActiveSubTab('fields')}
-              className={`py-1.5 px-2 rounded-xl text-[10.5px] font-black tracking-wide border-b-2 transition-all cursor-pointer ${
+              className={`py-1.5 px-2 rounded-xl text-[10.5px] font-black border-b-2 transition-all cursor-pointer ${
                 activeSubTab === 'fields' 
                   ? 'border-purple-600 bg-purple-50 text-purple-700' 
                   : 'border-transparent text-slate-400 hover:text-slate-700 hover:bg-slate-50'
@@ -326,7 +326,7 @@ export function FormStyleController({ language, onSuccess }: FormStyleController
             <button
               type="button"
               onClick={() => setActiveSubTab('table')}
-              className={`py-1.5 px-2 rounded-xl text-[10.5px] font-black tracking-wide border-b-2 transition-all cursor-pointer ${
+              className={`py-1.5 px-2 rounded-xl text-[10.5px] font-black border-b-2 transition-all cursor-pointer ${
                 activeSubTab === 'table' 
                   ? 'border-purple-600 bg-purple-50 text-purple-700' 
                   : 'border-transparent text-slate-400 hover:text-slate-700 hover:bg-slate-50'
@@ -340,7 +340,7 @@ export function FormStyleController({ language, onSuccess }: FormStyleController
             <button
               type="button"
               onClick={() => setActiveSubTab('signatures_layout')}
-              className={`py-1.5 px-2 rounded-xl text-[10.5px] font-black tracking-wide border-b-2 col-span-2 transition-all cursor-pointer ${
+              className={`py-1.5 px-2 rounded-xl text-[10.5px] font-black border-b-2 col-span-2 transition-all cursor-pointer ${
                 activeSubTab === 'signatures_layout' 
                   ? 'border-purple-600 bg-purple-50 text-purple-700' 
                   : 'border-transparent text-slate-400 hover:text-slate-700 hover:bg-slate-50'
@@ -366,8 +366,8 @@ export function FormStyleController({ language, onSuccess }: FormStyleController
                     onChange={(e) => setSettings({ ...settings, primaryFont: e.target.value })}
                     className="w-full p-2.5 bg-slate-50 border border-slate-200/60 rounded-xl text-xs font-bold font-sans cursor-pointer focus:border-purple-500"
                   >
-                    {fontOptions.map((opt) => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    {fontOptions.map((opt, idx) => (
+                      <option key={`font-opt-${opt.value}-${idx}`} value={opt.value}>{opt.label}</option>
                     ))}
                   </select>
                 </div>
@@ -381,8 +381,8 @@ export function FormStyleController({ language, onSuccess }: FormStyleController
                     onChange={(e) => setSettings({ ...settings, monoFont: e.target.value })}
                     className="w-full p-2.5 bg-slate-50 border border-slate-200/60 rounded-xl text-xs font-bold font-mono cursor-pointer focus:border-purple-500"
                   >
-                    {monoFontOptions.map((opt) => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    {monoFontOptions.map((opt, idx) => (
+                      <option key={`mono-opt-${opt.value}-${idx}`} value={opt.value}>{opt.label}</option>
                     ))}
                   </select>
                 </div>
@@ -397,8 +397,8 @@ export function FormStyleController({ language, onSuccess }: FormStyleController
                       onChange={(e) => setSettings({ ...settings, titleSize: e.target.value })}
                       className="w-full p-2 bg-slate-50 border border-slate-200/60 rounded-lg text-xs font-bold focus:border-purple-500"
                     >
-                      {titleSizeOptions.map((size) => (
-                        <option key={size} value={size}>{size}</option>
+                      {titleSizeOptions.map((size, idx) => (
+                        <option key={`tsize-opt-${size}-${idx}`} value={size}>{size}</option>
                       ))}
                     </select>
                   </div>
@@ -412,8 +412,8 @@ export function FormStyleController({ language, onSuccess }: FormStyleController
                       onChange={(e) => setSettings({ ...settings, headerDetailsSize: e.target.value })}
                       className="w-full p-2 bg-slate-50 border border-slate-200/60 rounded-lg text-xs font-bold focus:border-purple-500"
                     >
-                      {sizeOptions.map((size) => (
-                        <option key={size} value={size}>{size}</option>
+                      {sizeOptions.map((size, idx) => (
+                        <option key={`hdr-sz-opt-${size}-${idx}`} value={size}>{size}</option>
                       ))}
                     </select>
                   </div>
@@ -429,8 +429,8 @@ export function FormStyleController({ language, onSuccess }: FormStyleController
                       onChange={(e) => setSettings({ ...settings, tableHeaderSize: e.target.value })}
                       className="w-full p-2 bg-slate-50 border border-slate-200/60 rounded-lg text-xs font-bold focus:border-purple-500"
                     >
-                      {sizeOptions.map((size) => (
-                        <option key={size} value={size}>{size}</option>
+                      {sizeOptions.map((size, idx) => (
+                        <option key={`th-sz-opt-${size}-${idx}`} value={size}>{size}</option>
                       ))}
                     </select>
                   </div>
@@ -444,8 +444,8 @@ export function FormStyleController({ language, onSuccess }: FormStyleController
                       onChange={(e) => setSettings({ ...settings, tableBodySize: e.target.value })}
                       className="w-full p-2 bg-slate-50 border border-slate-200/60 rounded-lg text-xs font-bold focus:border-purple-500"
                     >
-                      {sizeOptions.map((size) => (
-                        <option key={size} value={size}>{size}</option>
+                      {sizeOptions.map((size, idx) => (
+                        <option key={`tb-sz-opt-${size}-${idx}`} value={size}>{size}</option>
                       ))}
                     </select>
                   </div>
@@ -459,8 +459,8 @@ export function FormStyleController({ language, onSuccess }: FormStyleController
                       onChange={(e) => setSettings({ ...settings, notesSize: e.target.value })}
                       className="w-full p-2 bg-slate-50 border border-slate-200/60 rounded-lg text-xs font-bold focus:border-purple-500"
                     >
-                      {sizeOptions.map((size) => (
-                        <option key={size} value={size}>{size}</option>
+                      {sizeOptions.map((size, idx) => (
+                        <option key={`notes-sz-opt-${size}-${idx}`} value={size}>{size}</option>
                       ))}
                     </select>
                   </div>
@@ -478,7 +478,7 @@ export function FormStyleController({ language, onSuccess }: FormStyleController
                   <div className="grid grid-cols-2 gap-2">
                     {colorPresets.map((preset, index) => (
                       <button
-                        key={index}
+                        key={`form-color-preset-${preset.name || 'preset'}-${index}`}
                         type="button"
                         onClick={() => setSettings({
                           ...settings,
@@ -565,8 +565,8 @@ export function FormStyleController({ language, onSuccess }: FormStyleController
                       onChange={(e) => setSettings({ ...settings, borderType: e.target.value as any })}
                       className="w-full p-2.5 bg-slate-50 border border-slate-200/60 rounded-xl text-xs font-bold focus:border-purple-500"
                     >
-                      {borderTypes.map((type) => (
-                        <option key={type.value} value={type.value}>{type.label}</option>
+                      {borderTypes.map((type, idx) => (
+                        <option key={`btype-opt-${type.value}-${idx}`} value={type.value}>{type.label}</option>
                       ))}
                     </select>
                   </div>
@@ -586,8 +586,8 @@ export function FormStyleController({ language, onSuccess }: FormStyleController
                     onChange={(e) => setSettings({ ...settings, tablePaddingY: e.target.value })}
                     className="w-full p-2.5 bg-slate-50 border border-slate-200/60 rounded-xl text-xs font-bold cursor-pointer focus:border-purple-500"
                   >
-                    {paddingOptions.map((opt) => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    {paddingOptions.map((opt, idx) => (
+                      <option key={`pad-opt-${opt.value}-${idx}`} value={opt.value}>{opt.label}</option>
                     ))}
                   </select>
                 </div>
@@ -601,8 +601,8 @@ export function FormStyleController({ language, onSuccess }: FormStyleController
                     onChange={(e) => setSettings({ ...settings, outerPadding: e.target.value })}
                     className="w-full p-2.5 bg-slate-50 border border-slate-200/60 rounded-xl text-xs font-bold cursor-pointer focus:border-purple-500"
                   >
-                    {outerPaddingOptions.map((opt) => (
-                      <option key={opt.value} value={opt.value}>{opt.value} {language === 'ar' ? '(تنسيق ذكي)' : ''}</option>
+                    {outerPaddingOptions.map((opt, idx) => (
+                      <option key={`opad-opt-${opt.value}-${idx}`} value={opt.value}>{opt.value} {language === 'ar' ? '(تنسيق ذكي)' : ''}</option>
                     ))}
                   </select>
                 </div>
@@ -776,7 +776,7 @@ export function FormStyleController({ language, onSuccess }: FormStyleController
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
                       <span className="text-xs font-black text-slate-700 block">
-                        {language === 'ar' ? 'شعار وزارة التربية والتعليم في الاستمارة:' : 'Ministry Logo Emblem:'}
+                        {language === 'ar' ? 'شعار وزارة التعليم في الاستمارة:' : 'Ministry Logo Emblem:'}
                       </span>
                       <span className="text-[10px] text-slate-400 block">
                         {language === 'ar' ? 'إظهار شعار سلطنة عمان والرموز الوطنية بالأعلى' : 'Toggle logo display at header'}
@@ -951,7 +951,7 @@ export function FormStyleController({ language, onSuccess }: FormStyleController
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-500 block">{language === 'ar' ? 'عمود سبب التعديل والقرار الفني للمطابقة:' : 'Modification Reason Column Title:'}</label>
+                    <label className="text-[10px] font-black text-slate-500 block">{language === 'ar' ? 'عمود سبب التعديل:' : 'Modification Reason Column Title:'}</label>
                     <input type="text" value={settings.colReasonAr || ''} onChange={(e) => setSettings({ ...settings, colReasonAr: e.target.value })} className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold focus:border-purple-500 focus:bg-white transition-all" />
                   </div>
                 </div>
@@ -1464,11 +1464,11 @@ export function FormStyleController({ language, onSuccess }: FormStyleController
                 descAr: 'متوسط الأبعاد',
                 descEn: 'Moderate Y'
               }
-            ].map((m) => {
+            ].map((m, mIdx) => {
               const isSelected = settings.printPageMarginX === m.x && settings.printPageMarginY === m.y;
               return (
                 <button
-                  key={m.id}
+                  key={`form-margin-preset-${m.id || 'margin'}-${mIdx}`}
                   type="button"
                   onClick={() => {
                     updateAndSaveSettings({
@@ -1531,8 +1531,8 @@ export function FormStyleController({ language, onSuccess }: FormStyleController
             {/* Simulated Watermark overlay */}
             {settings.showWatermark && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0 overflow-hidden">
-                <div className="sim-watermark text-[24px] font-black opacity-35 rotate-[-30deg] uppercase tracking-wide whitespace-normal text-center select-none" style={{ color: settings.primaryColor }}>
-                  {settings.watermarkText || 'وزارة التربية والتعليم - وثيقة فحص رسمية'}
+                <div className="sim-watermark text-[24px] font-black opacity-35 rotate-[-30deg] uppercase whitespace-normal text-center select-none" style={{ color: settings.primaryColor }}>
+                  {settings.watermarkText || 'وزارة التعليم - وثيقة فحص رسمية'}
                 </div>
               </div>
             )}
@@ -1732,14 +1732,14 @@ export function FormStyleController({ language, onSuccess }: FormStyleController
                           <th className="p-1.5 border-b border-slate-200 font-black w-36">{settings.colStudentNameAr || 'اسم الطالب/ة'}</th>
                           <th className="p-1.5 text-center border-b border-slate-200 font-black w-10">{settings.colClassAr || 'الصف'}</th>
                           <th className="p-1.5 text-center border-b border-slate-200 font-black w-16">{settings.colToolAr || 'الأداة'}</th>
-                          <th className="p-1.5 text-center border-b border-slate-200 font-black w-16" colSpan={2}>
-                            <div className="text-center font-black leading-tight mb-0.5 text-[9px]">{language === 'ar' ? 'الدرجـــة' : 'Grade'}</div>
-                            <div className="grid grid-cols-2 text-[8px] border-t border-slate-300 pt-0.5 font-bold">
-                              <span>{settings.colScoreBeforeAr || 'قبل'}</span>
-                              <span>{settings.colScoreAfterAr || 'بعد'}</span>
+                          <th className="p-1 text-center border-b border-slate-200 font-black w-20 align-middle" colSpan={2}>
+                            <div className="flex items-center justify-center w-full font-black leading-tight mb-0.5 text-[10.5px] text-slate-800">{language === 'ar' ? 'الدرجة' : 'Grade'}</div>
+                            <div className="grid grid-cols-2 text-[9px] border-t-2 border-slate-300 pt-0.5 font-black divide-x divide-x-reverse divide-slate-300 bg-white/70">
+                              <span className="text-slate-900 px-0.5 font-black">{settings.colScoreBeforeAr || 'قبل'}</span>
+                              <span className="text-slate-900 px-0.5 font-black">{settings.colScoreAfterAr || 'بعد'}</span>
                             </div>
                           </th>
-                          <th className="p-1.5 border-b border-slate-200 font-black">{settings.colReasonAr || 'سبب التعديل والقرار الفني والفرز والمطابقة بوزارة التعليم'}</th>
+                          <th className="p-1.5 border-b border-slate-200 font-black text-center">{settings.colReasonAr || 'سبب التعديل'}</th>
                         </tr>
                       </thead>
                       <tbody style={{ fontSize: settings.tableBodySize }}>

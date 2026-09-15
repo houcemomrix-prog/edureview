@@ -216,6 +216,7 @@ export const SchoolsDatabaseView: React.FC<SchoolsDatabaseViewProps> = ({ langua
       <AnimatePresence>
         {toast.type && (
           <motion.div 
+            key="sch-db-toast-message"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
@@ -320,7 +321,7 @@ export const SchoolsDatabaseView: React.FC<SchoolsDatabaseViewProps> = ({ langua
           const isSelected = selectedWilayaFilter === w.id;
           return (
             <button
-              key={w.id}
+              key={`sch-db-wilaya-tab-${w.id}`}
               type="button"
               onClick={() => setSelectedWilayaFilter(isSelected ? '' : w.id)}
               className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 ${
@@ -380,9 +381,9 @@ export const SchoolsDatabaseView: React.FC<SchoolsDatabaseViewProps> = ({ langua
                 onChange={(e) => setSelectedWilayaFilter(e.target.value)}
                 className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs text-slate-700 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-850 focus:border-indigo-850 pl-8 font-bold appearance-none cursor-pointer"
               >
-                <option value="">{isRtl ? 'كل الولايات بمحافظة الوسطى' : 'All Al Wusta Wilayats'}</option>
+                <option key="sch-db-filter-all" value="">{isRtl ? 'كل الولايات بمحافظة الوسطى' : 'All Al Wusta Wilayats'}</option>
                 {WILAYATS.map(w => (
-                  <option key={w.id} value={w.id}>{isRtl ? w.nameAr : w.nameEn}</option>
+                  <option key={`sch-db-filter-opt-${w.id}`} value={w.id}>{isRtl ? w.nameAr : w.nameEn}</option>
                 ))}
               </select>
               <Filter className={`absolute top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none ${isRtl ? 'left-3' : 'right-3'}`} />
@@ -439,12 +440,12 @@ export const SchoolsDatabaseView: React.FC<SchoolsDatabaseViewProps> = ({ langua
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 font-sans max-h-[800px] overflow-y-auto pr-1">
-          {filteredSchools.map((school) => {
+          {filteredSchools.map((school, index) => {
             const isDeletingThis = confirmDeleteId === school.id;
             
             return (
               <motion.div
-                key={school.id}
+                key={`sch-db-${school.id || 'sch'}-${index}`}
                 layout
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -580,7 +581,13 @@ export const SchoolsDatabaseView: React.FC<SchoolsDatabaseViewProps> = ({ langua
       {/* Slide-over or persistent overlay Modal to Create/Edit items */}
       <AnimatePresence>
         {isFormOpen && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <motion.div 
+            key="sch-db-form-modal"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4"
+          >
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -602,7 +609,7 @@ export const SchoolsDatabaseView: React.FC<SchoolsDatabaseViewProps> = ({ langua
                     </h3>
                     <p className="text-[10px] text-slate-300 font-bold mt-0.5">
                       {isRtl 
-                        ? 'يرجى إدخال البيانات المعتمدة في المراسلات الرسمية لوزارة التربية' 
+                        ? 'يرجى إدخال البيانات المعتمدة في المراسلات الرسمية لوزارة التعليم' 
                         : 'Provide official registrar naming conforming to MOE directory guidelines.'}
                     </p>
                   </div>
@@ -630,7 +637,7 @@ export const SchoolsDatabaseView: React.FC<SchoolsDatabaseViewProps> = ({ langua
                     className="w-full px-4 py-3 border border-slate-200 rounded-xl text-xs text-slate-800 bg-white focus:outline-none focus:border-[#051C3F] font-bold cursor-pointer"
                   >
                     {WILAYATS.map(w => (
-                      <option key={w.id} value={w.id}>{isRtl ? w.nameAr : w.nameEn}</option>
+                      <option key={`sch-db-modal-opt-${w.id}`} value={w.id}>{isRtl ? w.nameAr : w.nameEn}</option>
                     ))}
                   </select>
                 </div>
@@ -765,7 +772,7 @@ export const SchoolsDatabaseView: React.FC<SchoolsDatabaseViewProps> = ({ langua
 
               </form>
             </motion.div>
-          </div>
+          </motion.div>
         )}
       </AnimatePresence>
 

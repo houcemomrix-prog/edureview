@@ -44,7 +44,7 @@ async function sendOfficialOTPEmail(email: string, code: string, lang: 'ar' | 'e
   const emailHtml = lang === 'ar' ? `
     <div style="direction: rtl; text-align: right; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
       <div style="background-color: #821315; padding: 26px 20px; text-align: center; color: white;">
-        <h2 style="margin: 0; font-size: 21px; font-weight: 800; letter-spacing: -0.5px;">سلطنة عمان - وزارة التربية والتعليم</h2>
+        <h2 style="margin: 0; font-size: 21px; font-weight: 800; letter-spacing: -0.5px;">سلطنة عمان - وزارة التعليم</h2>
         <p style="margin: 4px 0 0 0; font-size: 11px; opacity: 0.9; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">البوابة التعليمية الموحدة للمحتوى والامتحانات</p>
       </div>
       <div style="padding: 35px 25px; background-color: #ffffff;">
@@ -140,7 +140,7 @@ async function sendOfficialOTPEmail(email: string, code: string, lang: 'ar' | 'e
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = process.env.PORT || 3000;
 
   // Body parsing middleware
   app.use(express.json());
@@ -272,7 +272,7 @@ ${keyAnswer}
   });
 
   // --- Serve Client/Vite Middleware ---
-  if (process.env.NODE_ENV !== "production") {
+  if (process.env.NODE_ENV !== "production" && !process.env.K_SERVICE) {
     console.log("Starting server in DEVELOPMENT mode with Vite Middleware...");
     const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({

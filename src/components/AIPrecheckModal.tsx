@@ -126,7 +126,7 @@ export function AIPrecheckModal({ isOpen, onClose, result, loading, language = '
                   </h4>
                   <ul className="space-y-2">
                     {result.suggestedImprovements.map((imp, idx) => (
-                      <li key={idx} className="flex items-start gap-3 text-xs text-slate-700 bg-amber-50/50 p-3 rounded-xl border border-amber-100/60 leading-relaxed text-left">
+                      <li key={`ai-recommendation-${idx}-${imp.substring(0, 20)}`} className="flex items-start gap-3 text-xs text-slate-700 bg-amber-50/50 p-3 rounded-xl border border-amber-100/60 leading-relaxed text-left">
                         <span className="w-5 h-5 rounded-lg bg-[#D4AF37] text-[#0B2C1A] flex items-center justify-center font-bold text-[10px] flex-shrink-0 mt-0.5 shadow-xs">
                           {idx + 1}
                         </span>

@@ -16,7 +16,8 @@ import {
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { OMAN_WUSTA_SCHOOLS } from '../data/schoolsData';
 import { db, auth, OperationType, handleFirestoreError, storage } from './firebase';
-import { UserProfile, Assessment, ActivityLog, AssessmentStatus, ArchivedForm, FormDesignSettings, SchoolDoc, SchoolReport } from '../types';
+import { UserProfile, Assessment, ActivityLog, AssessmentStatus, ArchivedForm, FormDesignSettings, SchoolDoc, SchoolReport, TeacherNotification } from '../types';
+import { isSubjectMatch } from '../lib/translations';
 
 let sandboxListeners: Array<(uid: string, profile: UserProfile | null) => void> = [];
 
@@ -90,38 +91,52 @@ const SANDBOX_USERS_KEY = 'oman_moe_sandbox_users';
 const SANDBOX_ASSESSMENTS_KEY = 'oman_moe_sandbox_assessments';
 const SANDBOX_LOGS_KEY = 'oman_moe_sandbox_logs';
 
+export const LINKED_EXPERIMENT_SCHOOL_AR = 'مدرسة الدقم للتعليم الأساسي';
+export const LINKED_EXPERIMENT_SCHOOL_EN = 'Duqm Basic Education School';
+export const LINKED_EXPERIMENT_GOVERNORATE_AR = 'المديرية العامة للتربية والتعليم بمحافظة الوسطى';
+export const LINKED_EXPERIMENT_GOVERNORATE_EN = 'General Directorate of Education in Al Wusta Governorate';
+
 const INITIAL_SANDBOX_USERS: Record<string, UserProfile> = {
   'demo-school-1': {
     uid: 'demo-school-1',
-    name: 'Al-Azaiba Basic Education School',
-    email: 'azaiba.school@moe.om',
+    name: 'أ. وليد الخروصي (مدير مدرسة الدقم)',
+    email: 'school@moe.om',
     role: 'school',
-    schoolName: 'Al-Azaiba School',
+    roleType: 'administrative',
+    schoolName: LINKED_EXPERIMENT_SCHOOL_AR,
+    wilaya: 'duqm',
+    directorate: LINKED_EXPERIMENT_GOVERNORATE_AR,
+    jobTitle: 'مدير مدرسة',
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString()
   },
   'demo-teacher-1': {
     uid: 'demo-teacher-1',
-    name: 'Dr. Fatma Al-Siyabi',
-    email: 'fatma.teacher@moe.om',
+    name: 'د. فاطمة السيابية (معلمة العلوم بمدرسة الدقم)',
+    email: 'teacher@moe.om',
     role: 'school',
     roleType: 'teacher',
-    schoolName: 'Al-Azaiba Basic Education School',
+    schoolName: LINKED_EXPERIMENT_SCHOOL_AR,
+    wilaya: 'duqm',
     subject: 'Science',
+    directorate: LINKED_EXPERIMENT_GOVERNORATE_AR,
+    jobTitle: 'معلم مادة',
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString()
   },
   'demo-mod-1': {
     uid: 'demo-mod-1',
-    name: 'Salem Al-Harthy',
-    email: 'salem.alharthy@moe.om',
+    name: 'أ. سالم الحارثي',
+    email: 'moderator@moe.om',
     role: 'moderator',
-    jobTitle: 'مدقق',
-    directorate: 'المديرية العامة للتربية والتعليم بمحافظة الوسطى',
+    jobTitle: 'مشرف ومدقق تربوي',
+    subject: 'All Subjects',
+    directorate: LINKED_EXPERIMENT_GOVERNORATE_AR,
+    wilaya: 'duqm',
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 10).toISOString()
   },
   'demo-admin-1': {
     uid: 'demo-admin-1',
-    name: 'Khalid Al-Amri',
-    email: 'admin@moe.om',
+    name: 'خالد العامري (مدير النظام)',
+    email: 'hossam9866@moe.om',
     role: 'admin',
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30).toISOString()
   }
@@ -131,6 +146,18 @@ const INITIAL_SANDBOX_ASSESSMENTS: Assessment[] = [];
 
 const INITIAL_SANDBOX_LOGS: ActivityLog[] = [];
 
+export function purgeRecentExperimentPapers(): void {
+  try {
+    localStorage.setItem(SANDBOX_ASSESSMENTS_KEY, JSON.stringify([]));
+    localStorage.setItem(SANDBOX_ARCHIVED_FORMS_KEY, JSON.stringify([]));
+    localStorage.setItem(SANDBOX_LOGS_KEY, JSON.stringify([]));
+    localStorage.setItem(SANDBOX_REPORTS_KEY, JSON.stringify([]));
+    localStorage.setItem(SANDBOX_USERS_KEY, JSON.stringify(INITIAL_SANDBOX_USERS));
+  } catch (err) {
+    console.warn("Could not purge localStorage experiment papers:", err);
+  }
+}
+
 function getSandboxData<T>(key: string, initial: T): T {
   let dataStr = localStorage.getItem(key);
   if (!dataStr) {
@@ -138,30 +165,35 @@ function getSandboxData<T>(key: string, initial: T): T {
     return initial;
   }
   try {
-    if (key === SANDBOX_ASSESSMENTS_KEY || key === SANDBOX_ARCHIVED_FORMS_KEY) {
-      const resetKey = 'oman_moe_sandbox_assessments_reset_v9';
+    if (key === SANDBOX_ASSESSMENTS_KEY || key === SANDBOX_ARCHIVED_FORMS_KEY || key === SANDBOX_LOGS_KEY || key === SANDBOX_REPORTS_KEY) {
+      const resetKey = 'oman_moe_sandbox_clean_experiments_linked_v15';
       if (!localStorage.getItem(resetKey)) {
         localStorage.setItem(resetKey, 'true');
         localStorage.setItem(SANDBOX_ASSESSMENTS_KEY, JSON.stringify([]));
         localStorage.setItem(SANDBOX_LOGS_KEY, JSON.stringify([]));
         localStorage.setItem(SANDBOX_ARCHIVED_FORMS_KEY, JSON.stringify([]));
+        localStorage.setItem(SANDBOX_REPORTS_KEY, JSON.stringify([]));
+        localStorage.setItem(SANDBOX_USERS_KEY, JSON.stringify(INITIAL_SANDBOX_USERS));
         return [] as unknown as T;
       }
     }
 
     let parsed = JSON.parse(dataStr);
-    if (Array.isArray(parsed)) {
-      // Keep only exact demo seed IDs if present
-      const demoIds = ['test-math-grade10', 'quiz-science-grade7', 'quiz-english-grade9', 'archived_demo_1'];
-      const filtered = parsed.filter((item: any) => {
-        if (!item) return false;
-        if (demoIds.includes(item.id)) return false;
-        return true;
-      });
-      if (filtered.length !== parsed.length) {
-        localStorage.setItem(key, JSON.stringify(filtered));
-        return filtered as unknown as T;
-      }
+    if (key === SANDBOX_USERS_KEY && parsed) {
+      // Always enforce the linked experiment accounts
+      parsed['demo-school-1'] = {
+        ...parsed['demo-school-1'],
+        ...INITIAL_SANDBOX_USERS['demo-school-1']
+      };
+      parsed['demo-teacher-1'] = {
+        ...parsed['demo-teacher-1'],
+        ...INITIAL_SANDBOX_USERS['demo-teacher-1']
+      };
+      parsed['demo-mod-1'] = {
+        ...parsed['demo-mod-1'],
+        ...INITIAL_SANDBOX_USERS['demo-mod-1']
+      };
+      localStorage.setItem(key, JSON.stringify(parsed));
     }
     return parsed as T;
   } catch (e) {
@@ -436,14 +468,9 @@ export async function getAssessments(userProfile: UserProfile): Promise<Assessme
     }
     
     if (userProfile.role === 'moderator') {
-      const targetSubject = (userProfile.subject || '').toLowerCase().trim();
-      const isUniversal = !targetSubject || targetSubject === 'all subjects' || targetSubject === 'all' || targetSubject === 'جميع المواد';
-      if (isUniversal) {
-        return assessments.sort((a,b) => b.createdAt.localeCompare(a.createdAt));
-      }
-      return assessments.filter(a => 
-        a.subject && a.subject.toLowerCase().trim() === targetSubject
-      ).sort((a,b) => b.createdAt.localeCompare(a.createdAt));
+      return assessments
+        .filter(a => isSubjectMatch(userProfile.subject, a.subject))
+        .sort((a,b) => b.createdAt.localeCompare(a.createdAt));
     }
     
     return assessments.sort((a,b) => b.createdAt.localeCompare(a.createdAt));
@@ -523,14 +550,9 @@ export async function getAssessments(userProfile: UserProfile): Promise<Assessme
     }
 
     if (userProfile.role === 'moderator') {
-      const targetSubject = (userProfile.subject || '').toLowerCase().trim();
-      const isUniversal = !targetSubject || targetSubject === 'all subjects' || targetSubject === 'all' || targetSubject === 'جميع المواد';
-      if (isUniversal) {
-        return results.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-      }
-      return results.filter(a => 
-        a.subject && a.subject.toLowerCase().trim() === targetSubject
-      ).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      return results
+        .filter(a => isSubjectMatch(userProfile.subject, a.subject))
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     }
 
     // Sort client-side to avoid composite indexing errors in Firebase
@@ -967,6 +989,19 @@ function normalizeSchoolNameLocal(name: string): string {
 
 function isSameSchoolLocal(school1?: string, school2?: string): boolean {
   if (!school1 || !school2) return false;
+  const raw1 = school1.trim().toLowerCase();
+  const raw2 = school2.trim().toLowerCase();
+  if (raw1 === raw2) return true;
+
+  // Cross-lingual and list comparison for Al Wusta schools
+  for (const wilaya of OMAN_WUSTA_SCHOOLS) {
+    for (const sch of wilaya.schools) {
+      const match1 = (raw1 === sch.nameAr.toLowerCase() || raw1 === sch.nameEn.toLowerCase() || raw1.includes(sch.nameAr.toLowerCase()) || sch.nameAr.toLowerCase().includes(raw1) || raw1.includes(sch.nameEn.toLowerCase()) || sch.nameEn.toLowerCase().includes(raw1));
+      const match2 = (raw2 === sch.nameAr.toLowerCase() || raw2 === sch.nameEn.toLowerCase() || raw2.includes(sch.nameAr.toLowerCase()) || sch.nameAr.toLowerCase().includes(raw2) || raw2.includes(sch.nameEn.toLowerCase()) || sch.nameEn.toLowerCase().includes(raw2));
+      if (match1 && match2) return true;
+    }
+  }
+
   const s1 = normalizeSchoolNameLocal(school1);
   const s2 = normalizeSchoolNameLocal(school2);
   return s1.includes(s2) || s2.includes(s1);
@@ -988,6 +1023,7 @@ export async function getArchivedForms(userProfileOrId?: UserProfile | string): 
       }
       if (profileDetails.roleType === 'teacher') {
         return archives.filter(a => 
+          a.schoolId === profileDetails.uid ||
           (a.teacherFileNo && profileDetails.phoneNumber && a.teacherFileNo === profileDetails.phoneNumber) ||
           (profileDetails.name && a.teacherName && (a.teacherName.trim().includes(profileDetails.name.trim()) || profileDetails.name.trim().includes(a.teacherName.trim()))) ||
           isSameSchoolLocal(a.schoolName, profileDetails.schoolName)
@@ -995,13 +1031,9 @@ export async function getArchivedForms(userProfileOrId?: UserProfile | string): 
       }
       return archives.filter(a => a.schoolId === profileDetails.uid).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     } else if (profileDetails && profileDetails.role === 'moderator') {
-      const targetSubject = (profileDetails.subject || '').toLowerCase().trim();
-      return archives.filter(a => {
-        const matchesSubject = !targetSubject ||
-                               (a.subject && a.subject.toLowerCase().trim() === targetSubject) ||
-                               (a.subjectName && a.subjectName.toLowerCase().trim() === targetSubject);
-        return matchesSubject;
-      }).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      return archives.filter(a => 
+        isSubjectMatch(profileDetails.subject, a.subject || a.subjectName)
+      ).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     } else if (passedId) {
       return archives.filter(a => a.schoolId === passedId).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     }
@@ -1087,6 +1119,7 @@ export async function getArchivedForms(userProfileOrId?: UserProfile | string): 
       }
       if (profileDetails.roleType === 'teacher') {
         return results.filter(a => 
+          a.schoolId === profileDetails.uid ||
           (a.teacherFileNo && profileDetails.phoneNumber && a.teacherFileNo === profileDetails.phoneNumber) ||
           (profileDetails.name && a.teacherName && (a.teacherName.trim().includes(profileDetails.name.trim()) || profileDetails.name.trim().includes(a.teacherName.trim()))) ||
           isSameSchoolLocal(a.schoolName, profileDetails.schoolName)
@@ -1096,13 +1129,9 @@ export async function getArchivedForms(userProfileOrId?: UserProfile | string): 
     }
 
     if (profileDetails && profileDetails.role === 'moderator') {
-      const targetSubject = (profileDetails.subject || '').toLowerCase().trim();
-      return results.filter(a => {
-        const matchesSubject = !targetSubject ||
-                               (a.subject && a.subject.toLowerCase().trim() === targetSubject) ||
-                               (a.subjectName && a.subjectName.toLowerCase().trim() === targetSubject);
-        return matchesSubject;
-      }).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      return results.filter(a => 
+        isSubjectMatch(profileDetails.subject, a.subject || a.subjectName)
+      ).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     }
 
     return results.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -1250,12 +1279,12 @@ export const DEFAULT_FORM_STYLES: FormDesignSettings = {
   outerPadding: '32px',
   borderWidth: '1.5px',
   borderType: 'solid',
-  titleTextAr: 'وزارة التربية والتعليم',
+  titleTextAr: 'وزارة التعليم',
   titleTextEn: 'MINISTRY OF EDUCATION',
   subTitleTextAr: 'المديرية العامة للإشراف التربوي - دائرة تقييم العائد التدريبي والقياس اللغوي',
   subTitleTextEn: 'DIRECTORATE GENERAL OF EDUCATIONAL SUPERVISION',
   showWatermark: true,
-  watermarkText: 'وزارة التربية والتعليم - وثيقة فحص رسمية',
+  watermarkText: 'وزارة التعليم - وثيقة فحص رسمية',
 
   // Default content labels for total control configuration
   reportTitleAr: 'استمارة الفحص و التدقيق المستمر',
@@ -1283,9 +1312,9 @@ export const DEFAULT_FORM_STYLES: FormDesignSettings = {
   colStudentNameAr: 'اسم الطالب ثلاثياً وقبيلته',
   colClassAr: 'الصف والشعبة',
   colToolAr: 'أداة التقويم المستمر',
-  colScoreBeforeAr: 'الدرجة قبل',
-  colScoreAfterAr: 'الدرجة بعد',
-  colReasonAr: 'سبب التعديل والقرار الفني للمطابقة',
+  colScoreBeforeAr: 'قبل',
+  colScoreAfterAr: 'بعد',
+  colReasonAr: 'سبب التعديل',
 
   sectionDevelopmentAr: 'برامج الإنماء والتمكين المهني المقترحة بالتقرير:',
   sectionAuditorSignAr: 'مشرف فحص ومطابقة المادة:',
@@ -1323,11 +1352,25 @@ export const DEFAULT_FORM_STYLES: FormDesignSettings = {
 const SANDBOX_FORM_SETTINGS_KEY = 'oman_moe_sandbox_form_settings_v2';
 
 export async function getFormDesignSettings(): Promise<FormDesignSettings> {
+  const sanitize = (settings: FormDesignSettings): FormDesignSettings => {
+    const res = { ...DEFAULT_FORM_STYLES, ...settings };
+    if (!res.colReasonAr || res.colReasonAr === 'سبب التعديل والقرار الفني للمطابقة' || res.colReasonAr.includes('والقرار الفني')) {
+      res.colReasonAr = 'سبب التعديل';
+    }
+    if (!res.colScoreBeforeAr || res.colScoreBeforeAr === 'الدرجة قبل') {
+      res.colScoreBeforeAr = 'قبل';
+    }
+    if (!res.colScoreAfterAr || res.colScoreAfterAr === 'الدرجة بعد') {
+      res.colScoreAfterAr = 'بعد';
+    }
+    return res;
+  };
+
   if (isSandboxActive()) {
     const val = localStorage.getItem(SANDBOX_FORM_SETTINGS_KEY);
     if (val) {
       try {
-        return { ...DEFAULT_FORM_STYLES, ...JSON.parse(val) };
+        return sanitize(JSON.parse(val));
       } catch (e) {
         return DEFAULT_FORM_STYLES;
       }
@@ -1339,7 +1382,7 @@ export async function getFormDesignSettings(): Promise<FormDesignSettings> {
   try {
     const s = await getDoc(doc(db, 'form_settings', 'global_style'));
     if (s.exists()) {
-      return { ...DEFAULT_FORM_STYLES, ...s.data() } as FormDesignSettings;
+      return sanitize(s.data() as FormDesignSettings);
     }
     return DEFAULT_FORM_STYLES;
   } catch (error) {
@@ -1825,3 +1868,72 @@ export async function markSchoolReportAsRead(reportId: string, userName: string)
 
 
 
+
+export async function createTeacherNotification(notification: Omit<TeacherNotification, 'id' | 'createdAt'>): Promise<string> {
+  try {
+    const docRef = await addDoc(collection(db, 'teacher_notifications'), {
+      ...notification,
+      createdAt: new Date().toISOString()
+    });
+    return docRef.id;
+  } catch (error) {
+    console.error('Error creating teacher notification:', error);
+    throw error;
+  }
+}
+
+export async function getTeacherNotifications(teacherId: string): Promise<TeacherNotification[]> {
+  try {
+    const q = query(
+      collection(db, 'teacher_notifications'),
+      where('teacherId', '==', teacherId)
+    );
+    const snap = await getDocs(q);
+    const results = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as TeacherNotification));
+    return results.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+  } catch (error) {
+    console.error('Error fetching teacher notifications:', error);
+    return [];
+  }
+}
+
+export async function markTeacherNotificationRead(notificationId: string): Promise<void> {
+  try {
+    const docRef = doc(db, 'teacher_notifications', notificationId);
+    await updateDoc(docRef, { read: true });
+  } catch (error) {
+    console.error('Error marking notification read:', error);
+  }
+}
+
+
+export const DEFAULT_SUBJECTS = [
+  'Arabic Language', 'English Language', 'Mathematics', 
+  'Science', 'Physics', 'Chemistry', 'Biology', 
+  'Islamic Studies', 'Social Studies', 'Information Technology',
+  'Applied Sciences', 'Individual Skills'
+];
+
+export async function getSubjectsList(): Promise<string[]> {
+  try {
+    const docRef = doc(db, 'form_settings', 'subjects');
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists() && docSnap.data().list) {
+      return docSnap.data().list;
+    }
+    return DEFAULT_SUBJECTS;
+  } catch (err) {
+    console.error("Error getting subjects:", err);
+    return DEFAULT_SUBJECTS;
+  }
+}
+
+export async function saveSubjectsList(list: string[]): Promise<void> {
+  try {
+    const docRef = doc(db, 'form_settings', 'subjects');
+    await setDoc(docRef, { list, updatedAt: new Date().toISOString() }, { merge: true });
+  } catch (err) {
+    console.error("Error saving subjects:", err);
+    throw err;
+  }
+}

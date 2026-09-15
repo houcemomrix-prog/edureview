@@ -237,6 +237,7 @@ export const SchoolStampsManager: React.FC<SchoolStampsManagerProps> = ({ langua
       <AnimatePresence>
         {toast.type && (
           <motion.div
+            key="stamp-toast-notification"
             initial={{ opacity: 0, y: -20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.95 }}
@@ -356,7 +357,7 @@ export const SchoolStampsManager: React.FC<SchoolStampsManagerProps> = ({ langua
               className="text-xs font-bold text-slate-700 bg-transparent focus:outline-hidden cursor-pointer"
             >
               {WILAYATS.map(w => (
-                <option key={w.id} value={w.id}>
+                <option key={`stamp-wilaya-opt-${w.id}`} value={w.id}>
                   {isRtl ? w.nameAr : w.nameEn}
                 </option>
               ))}
@@ -436,12 +437,12 @@ export const SchoolStampsManager: React.FC<SchoolStampsManagerProps> = ({ langua
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filteredSchools.map((school) => {
+          {filteredSchools.map((school, index) => {
             const hasStamp = Boolean(school.stampUrl && school.stampUrl.trim() !== '');
 
             return (
               <motion.div
-                key={school.id}
+                key={`stamp-sch-${school.id || 'sch'}-${index}`}
                 layout
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -593,7 +594,13 @@ export const SchoolStampsManager: React.FC<SchoolStampsManagerProps> = ({ langua
       {/* Upload Stamp Modal */}
       <AnimatePresence>
         {uploadModalSchool && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <motion.div 
+            key="stamp-upload-modal"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs"
+          >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -740,14 +747,20 @@ export const SchoolStampsManager: React.FC<SchoolStampsManagerProps> = ({ langua
                 </button>
               </div>
             </motion.div>
-          </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
       {/* Delete Confirmation Modal */}
       <AnimatePresence>
         {deleteModalSchool && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <motion.div 
+            key="stamp-delete-modal"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs"
+          >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -806,14 +819,18 @@ export const SchoolStampsManager: React.FC<SchoolStampsManagerProps> = ({ langua
                 </button>
               </div>
             </motion.div>
-          </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
       {/* Enlarge Stamp Lightbox Modal */}
       <AnimatePresence>
         {previewStampSchool && previewStampSchool.stampUrl && (
-          <div 
+          <motion.div 
+            key="stamp-preview-modal"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             onClick={() => setPreviewStampSchool(null)}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm cursor-pointer"
           >
@@ -891,14 +908,18 @@ export const SchoolStampsManager: React.FC<SchoolStampsManagerProps> = ({ langua
                 </button>
               </div>
             </motion.div>
-          </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
       {/* Test Document Stamping Simulation Modal */}
       <AnimatePresence>
         {documentTestSchool && (
-          <div 
+          <motion.div 
+            key="stamp-document-test-modal"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             onClick={() => setDocumentTestSchool(null)}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm cursor-pointer"
           >
@@ -937,7 +958,7 @@ export const SchoolStampsManager: React.FC<SchoolStampsManagerProps> = ({ langua
               <div className="bg-[#FAF9F5] border-2 border-slate-300 rounded-2xl p-6 text-right font-sans shadow-sm relative overflow-hidden" dir="rtl">
                 {/* Header of Simulated Certificate */}
                 <div className="text-center border-b-2 border-slate-400/60 pb-4 mb-4">
-                  <p className="text-xs font-bold text-slate-600">سلطنة عُمان - وزارة التربية والتعليم</p>
+                  <p className="text-xs font-bold text-slate-600">سلطنة عُمان - وزارة التعليم</p>
                   <p className="text-xs font-bold text-slate-600">المديرية العامة للتربية والتعليم بمحافظة الوسطى</p>
                   <h4 className="text-base font-black text-[#821315] mt-1">
                     استمارة تدقيق ومصادقة الاختبارات الرسمية
@@ -1000,7 +1021,7 @@ export const SchoolStampsManager: React.FC<SchoolStampsManagerProps> = ({ langua
                 </button>
               </div>
             </motion.div>
-          </div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

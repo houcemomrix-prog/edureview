@@ -11,7 +11,7 @@ export interface UserProfile {
   appointmentYear?: string;
   wilaya?: string;
   directorate?: string;
-  jobTitle?: 'معلم' | 'مدقق' | 'مدير مدرسة' | 'مدير النظام';
+  jobTitle?: 'معلم' | 'مدقق' | 'مدير مدرسة' | 'مدير النظام' | string;
   subject?: string;
   phoneNumber?: string;
   gradesTaught?: string[];
@@ -243,3 +243,17 @@ export interface SchoolReport {
 }
 
 
+
+export interface TeacherNotification {
+  id?: string;
+  teacherId: string;
+  teacherName: string;
+  titleAr: string;
+  titleEn: string;
+  messageAr: string;
+  messageEn: string;
+  subject?: string;
+  read: boolean;
+  createdAt: string;
+  type: 'nudge' | 'alert' | 'info';
+}

@@ -60,10 +60,10 @@ const svgString = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400"
     </g>
   </g>
 
-  <!-- Arabic Typography for 'وزارة التربية والتعليم' (Ministry of Education) -->
+  <!-- Arabic Typography for 'وزارة التعليم' (Ministry of Education) -->
   <text fill="#1c4e94" font-family="'Cairo', 'Amiri', 'Tajawal', 'Noto Sans Arabic', 'Segoe UI', sans-serif" font-size="28" font-weight="900" letter-spacing="0.5">
     <textPath href="#top-text-path" startOffset="50%" text-anchor="middle">
-      وزارة التربية والتعليم
+      وزارة التعليم
     </textPath>
   </text>
   

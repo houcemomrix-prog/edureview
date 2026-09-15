@@ -342,11 +342,11 @@ export function TeacherUploadsView({
               onChange={(e) => setSelectedGrade(e.target.value)}
               className="w-full px-4 py-3 border border-slate-200 rounded-xl text-xs font-extrabold text-[#051C3F] focus:outline-none focus:border-emerald-600 bg-white cursor-pointer shadow-xs"
             >
-              <option value="">
+              <option key="upload-grade-default" value="">
                 {language === 'ar' ? '-- اختر الصف الدراسي للمادة --' : '-- Choose Grade Level --'}
               </option>
-              {GRADES.map(g => (
-                <option key={g} value={g}>
+              {GRADES.map((g, index) => (
+                <option key={`upload-grade-${g}-${index}`} value={g}>
                   {translateGrade(g, language)}
                 </option>
               ))}
@@ -382,12 +382,12 @@ export function TeacherUploadsView({
                 }`}
               >
                 {isSubjectTeacher && teacherSubject ? (
-                  <option value={teacherSubject}>
+                  <option key={`upload-teacher-subj-${teacherSubject}`} value={teacherSubject}>
                     {translateSubject(teacherSubject, language)}
                   </option>
                 ) : (
-                  SUBJECTS.map(s => (
-                    <option key={s} value={s}>
+                  SUBJECTS.map((s, index) => (
+                    <option key={`upload-subj-${s}-${index}`} value={s}>
                       {translateSubject(s, language)}
                     </option>
                   ))
@@ -438,7 +438,7 @@ export function TeacherUploadsView({
               
               return (
                 <div 
-                  key={slot.id} 
+                  key={`teacher-slot-${slot.id}-${index}`} 
                   className={`p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border transition-all space-y-3 sm:space-y-4 relative ${
                     slot.uploaded 
                       ? 'border-emerald-600 bg-emerald-500/5' 
@@ -587,9 +587,9 @@ export function TeacherUploadsView({
                             {(language === 'ar' 
                               ? ['اختبار قصير أول', 'اختبار قصير ثانٍ', 'امتحان فصلي موحد', 'واجب منزلي', 'مشروع تقييمي', 'ورقة عمل إثرائية']
                               : ['Quiz 1', 'Quiz 2', 'Unified Exam', 'Homework Task', 'Project Assessment', 'Worksheet']
-                            ).map((suggestion) => (
+                            ).map((suggestion, sIdx) => (
                               <button
-                                key={suggestion}
+                                key={`slot-${slot.id}-sug-${suggestion}-${sIdx}`}
                                 type="button"
                                 disabled={slot.uploaded || isSlotLoading}
                                 onClick={() => {

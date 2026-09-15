@@ -25,8 +25,9 @@ import {
 } from 'lucide-react';
 import { UserProfile, Assessment } from '../types';
 import { Language, translateGrade, translateSubject, translateStatus } from '../lib/translations';
-import { getAllUserProfiles } from '../services/db';
+import { getAllUserProfiles, createTeacherNotification } from '../services/db';
 import { Badge } from './Badge';
+import { OMAN_WUSTA_SCHOOLS } from '../data/schoolsData';
 
 // School name normalizer to pair variations perfectly
 export const normalizeSchoolName = (name: string): string => {
@@ -39,6 +40,18 @@ export const normalizeSchoolName = (name: string): string => {
 
 export const isSameSchool = (school1?: string, school2?: string): boolean => {
   if (!school1 || !school2) return false;
+  const raw1 = school1.trim().toLowerCase();
+  const raw2 = school2.trim().toLowerCase();
+  if (raw1 === raw2) return true;
+
+  for (const wilaya of OMAN_WUSTA_SCHOOLS) {
+    for (const sch of wilaya.schools) {
+      const match1 = (raw1 === sch.nameAr.toLowerCase() || raw1 === sch.nameEn.toLowerCase() || raw1.includes(sch.nameAr.toLowerCase()) || sch.nameAr.toLowerCase().includes(raw1) || raw1.includes(sch.nameEn.toLowerCase()) || sch.nameEn.toLowerCase().includes(raw1));
+      const match2 = (raw2 === sch.nameAr.toLowerCase() || raw2 === sch.nameEn.toLowerCase() || raw2.includes(sch.nameAr.toLowerCase()) || sch.nameAr.toLowerCase().includes(raw2) || raw2.includes(sch.nameEn.toLowerCase()) || sch.nameEn.toLowerCase().includes(raw2));
+      if (match1 && match2) return true;
+    }
+  }
+
   const s1 = normalizeSchoolName(school1);
   const s2 = normalizeSchoolName(school2);
   return s1.includes(s2) || s2.includes(s1);
@@ -74,7 +87,7 @@ export function SchoolPrincipalObserver({
   const [subjectFilter, setSubjectFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('');
 
-  const principalSchool = userProfile.schoolName || 'Al-Azaiba School';
+  const principalSchool = userProfile.schoolName || 'مدرسة الدقم للتعليم الأساسي';
 
   useEffect(() => {
     async function loadTeachers() {
@@ -185,8 +198,23 @@ export function SchoolPrincipalObserver({
     const nudgeCount = Object.keys(nudgedTeacherIds).length;
 
     // Helper to send reminder nudge
-    const handleSendNudge = (teacherId: string, teacherName: string, subject: string) => {
+    const handleSendNudge = async (teacherId: string, teacherName: string, subject: string) => {
       setNudgedTeacherIds(prev => ({ ...prev, [teacherId]: true }));
+      try {
+        await createTeacherNotification({
+          teacherId,
+          teacherName,
+          titleAr: 'تنبيه متابعة وتقييم',
+          titleEn: 'Curriculum Upload Nudge',
+          messageAr: `تم إرسال تنبيه لك لمتابعة مرفوعات أدوات التقويم لمادة ${translateSubject(subject, 'ar')}. يُرجى سرعة الرفع.`,
+          messageEn: `A reminder was sent regarding your ${translateSubject(subject, 'en')} curriculum uploads. Please submit them soon.`,
+          subject,
+          read: false,
+          type: 'nudge'
+        });
+      } catch (e) {
+        console.error("Failed to send nudge notification", e);
+      }
       const msg = language === 'ar'
         ? `تم إرسال تنبيه متابعة وتدقيق تربوي بنجاح إلى ${teacherName} لمتابعة مرفوعات مادة ${translateSubject(subject, 'ar')}.`
         : `Supportive syllabus upload reminder successfully dispatched to ${teacherName} regarding ${translateSubject(subject, 'en')} curriculum schedule.`;
@@ -230,7 +258,7 @@ export function SchoolPrincipalObserver({
               {language === 'ar' ? 'منصة متابعة الإدارة المدرسية' : 'School Administration Tracker'}
             </span>
             <h2 className="text-xl sm:text-2xl font-bold font-heading tracking-tight leading-normal">
-              {language === 'ar' ? `لوحة متابعة ومراقبة المعلمين - مدرسة العذيبة` : `Academic Staff Submission Observer — ${principalSchool}`}
+              {language === 'ar' ? `لوحة متابعة ومراقبة المعلمين - ${principalSchool}` : `Academic Staff Submission Observer — ${principalSchool}`}
             </h2>
             <p className="text-slate-350 text-xs font-sans max-w-xl font-medium leading-relaxed">
               {language === 'ar' 
@@ -350,9 +378,9 @@ export function SchoolPrincipalObserver({
                   onChange={(e) => setSubjectFilter(e.target.value)}
                   className="px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-650 bg-slate-50 cursor-pointer font-medium focus:outline-none focus:border-indigo-500"
                 >
-                  <option value="">{language === 'ar' ? 'جميع المواد' : 'All Subjects'}</option>
-                  {((Array.from(new Set(teachers.map(t => t.profile.subject).filter(Boolean))) as string[])).map(subj => (
-                    <option key={subj} value={subj}>{translateSubject(subj, language)}</option>
+                  <option key="filter-subj-all" value="">{language === 'ar' ? 'جميع المواد' : 'All Subjects'}</option>
+                  {((Array.from(new Set(teachers.map(t => t.profile.subject).filter(Boolean))) as string[])).map((subj, index) => (
+                    <option key={`filter-subj-${subj}-${index}`} value={subj}>{translateSubject(subj, language)}</option>
                   ))}
                 </select>
 
@@ -361,10 +389,10 @@ export function SchoolPrincipalObserver({
                   onChange={(e) => setStatusFilter(e.target.value)}
                   className="px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-650 bg-slate-50 cursor-pointer font-medium focus:outline-none focus:border-indigo-500"
                 >
-                  <option value="">{language === 'ar' ? 'جميع الحالات' : 'All Compliance'}</option>
-                  <option value="completed">{language === 'ar' ? 'مستوفي النصاب (مكتمل)' : 'Fully Compliant'}</option>
-                  <option value="partial">{language === 'ar' ? 'جزئي (مرفوعات ناقصة)' : 'Partial Uploads'}</option>
-                  <option value="none">{language === 'ar' ? 'متأخر (لم يرفع ملفات)' : 'No Submissions'}</option>
+                  <option key="filter-status-all" value="">{language === 'ar' ? 'جميع الحالات' : 'All Compliance'}</option>
+                  <option key="filter-status-completed" value="completed">{language === 'ar' ? 'مستوفي النصاب (مكتمل)' : 'Fully Compliant'}</option>
+                  <option key="filter-status-partial" value="partial">{language === 'ar' ? 'جزئي (مرفوعات ناقصة)' : 'Partial Uploads'}</option>
+                  <option key="filter-status-none" value="none">{language === 'ar' ? 'متأخر (لم يرفع ملفات)' : 'No Submissions'}</option>
                 </select>
               </div>
             </div>
@@ -399,12 +427,16 @@ export function SchoolPrincipalObserver({
               </thead>
               <tbody className="divide-y divide-slate-100 font-sans text-slate-800 text-xs">
                 {filteredTeachers.length === 0 ? (
-                  <tr>
+                  <tr key="observer-no-teachers">
                     <td colSpan={5} className="py-16 text-center text-slate-400">
                       <div className="space-y-2">
                         <AlertCircle className="w-9 h-9 text-slate-350 mx-auto opacity-70" />
                         <p className="font-medium text-slate-500">{language === 'ar' ? 'لا توجد فلاتر متطابقة مع المعلمين.' : 'No teachers mathcing these search filters.'}</p>
-                        <p className="text-[11px] text-slate-400">{language === 'ar' ? 'جرب تغيير معايير البحث أو تصفية الحالات.' : 'Try adjusting filters to view the Al-Azaiba School roster.'}</p>
+                        <p className="text-[11px] text-slate-400">
+                          {language === 'ar' 
+                            ? `جرب تغيير معايير البحث أو تصفية الحالات لبيان معلمي ${principalSchool}.`
+                            : `Try adjusting filters to view the ${principalSchool} roster.`}
+                        </p>
                       </div>
                     </td>
                   </tr>
@@ -523,7 +555,7 @@ export function SchoolPrincipalObserver({
 
                         {/* Interactive Accordion Subtable: File details */}
                         {isExpanded && (
-                          <tr className="bg-indigo-50/5/25">
+                          <tr key={`teacher-expanded-row-${profile.uid || idx}-${idx}`} className="bg-indigo-50/5/25">
                             <td colSpan={5} className="py-4 px-6 border-b border-indigo-100/30">
                               <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-200/50 space-y-4 animate-in slide-in-from-top-1 duration-150">
                                 

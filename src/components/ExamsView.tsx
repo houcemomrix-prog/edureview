@@ -36,7 +36,7 @@ export function ExamsView({ assessments, language, onInspect }: ExamsViewProps) 
           </thead>
           <tbody>
             {assessments.length === 0 ? (
-              <tr>
+              <tr key="exams-empty">
                 <td colSpan={6} className="text-center py-12 text-slate-400 font-bold">
                   {language === 'ar' ? 'لم يتم العثور على أي ملفات وطنية.' : 'No national items uploaded in active database.'}
                 </td>

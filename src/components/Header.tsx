@@ -24,9 +24,9 @@ import {
   Palette,
   Check
 } from 'lucide-react';
-import { UserProfile, SchoolReport } from '../types';
+import { UserProfile, SchoolReport, TeacherNotification } from '../types';
 import { getTranslatedText, Language, translateSubject } from '../lib/translations';
-import { getSchoolReports } from '../services/db';
+import { getSchoolReports, getTeacherNotifications, markTeacherNotificationRead } from '../services/db';
 import logoEmblem from './logo-emblem.svg';
 import logoMoe from '../../photo.jpg';
 
@@ -40,11 +40,14 @@ const SUBJECTS = [
 const getUserSubtitle = (profile: UserProfile, lang: Language): string => {
   const role = profile.role;
   const roleType = profile.roleType;
-  const jobTitle = profile.jobTitle || (
-    role === 'admin' ? 'مدير النظام' :
-    role === 'moderator' ? 'مدقق' :
-    (roleType === 'administrative' ? 'مدير مدرسة' : 'معلم')
-  );
+  // Force jobTitle to "مدقق" if role is moderator, regardless of what's saved in the profile
+  // This handles cases where older profiles might have incorrect jobTitles saved
+  let jobTitle = profile.jobTitle;
+  if (role === 'moderator') {
+    jobTitle = 'مدقق';
+  } else if (!jobTitle) {
+    jobTitle = role === 'admin' ? 'مدير النظام' : (roleType === 'administrative' ? 'مدير مدرسة' : 'معلم');
+  }
 
   if (jobTitle === 'مدير النظام') {
     return lang === 'ar' ? 'مدير النظام' : 'System Administrator';
@@ -60,16 +63,7 @@ const getUserSubtitle = (profile: UserProfile, lang: Language): string => {
   }
 
   if (jobTitle === 'مدقق') {
-    const subjectLabel = translateSubject(profile.subject || 'All Subjects', lang);
-    if (lang === 'ar') {
-      return profile.subject === 'All Subjects' || !profile.subject
-        ? 'فاحص بالمحافظة (شامل كافة المواد)'
-        : `فاحص بالمحافظة لمادة ${subjectLabel}`;
-    } else {
-      return profile.subject === 'All Subjects' || !profile.subject
-        ? 'Governorate Auditor (Universal)'
-        : `Governorate Auditor (${subjectLabel})`;
-    }
+    return lang === 'ar' ? 'مدقق' : 'Auditor';
   }
 
   // Fallback is 'معلم'
@@ -90,8 +84,8 @@ interface HeaderProps {
   onAdminLogin: () => void;
   onSwitchSandboxUser: (role: 'school' | 'moderator' | 'admin' | 'teacher') => void;
   authLoading: boolean;
-  guestView?: 'welcome' | 'login-portal' | 'admin-portal';
-  onSelectGuestView?: (view: 'welcome' | 'login-portal' | 'admin-portal') => void;
+  guestView?: 'welcome' | 'login-portal' | 'admin-portal' | 'forgot-password';
+  onSelectGuestView?: (view: 'welcome' | 'login-portal' | 'admin-portal' | 'forgot-password') => void;
   language: Language;
   onToggleLanguage: (lang: Language) => void;
   onUpdateSubject?: (subject: string) => void;
@@ -115,10 +109,12 @@ export function Header({
   onLogout,
   onLoginRequest,
   onAdminLogin,
+  
   onSwitchSandboxUser,
   authLoading,
   guestView = 'welcome',
   onSelectGuestView,
+
   language,
   onToggleLanguage,
   onUpdateSubject,
@@ -135,11 +131,13 @@ export function Header({
   const [showSandboxDropdown, setShowSandboxDropdown] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [myReports, setMyReports] = useState<SchoolReport[]>([]);
+  const [myTeacherNotifications, setMyTeacherNotifications] = useState<TeacherNotification[]>([]);
   const [readReportIds, setReadReportIds] = useState<string[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAdminLoginForm, setShowAdminLoginForm] = useState(false);
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
+
   const notificationsRef = useRef<HTMLDivElement>(null);
 
   // Poll for reports to notify of new ones if they represent a school
@@ -156,8 +154,14 @@ export function Header({
 
       const fetchReports = async () => {
         try {
-          const fetched = await getSchoolReports(userProfile);
-          setMyReports(fetched);
+          if (userProfile.roleType !== 'teacher') {
+            const fetched = await getSchoolReports(userProfile);
+            setMyReports(fetched);
+          }
+          if (userProfile.roleType === 'teacher') {
+             const fetchedTeacherNotifs = await getTeacherNotifications(userProfile.uid);
+             setMyTeacherNotifications(fetchedTeacherNotifs);
+          }
         } catch (err) {
           console.error('Error loading reports in Header component:', err);
         }
@@ -168,6 +172,7 @@ export function Header({
       return () => clearInterval(interval);
     } else {
       setMyReports([]);
+      setMyTeacherNotifications([]);
     }
   }, [userProfile]);
 
@@ -182,7 +187,13 @@ export function Header({
   }, []);
 
   const unreadReports = myReports.filter(r => r.id && !readReportIds.includes(r.id));
-  const unreadCount = unreadReports.length;
+  const unreadTeacherNotifications = myTeacherNotifications.filter(n => !n.read);
+  const unreadCount = userProfile?.roleType === 'teacher' ? unreadTeacherNotifications.length : unreadReports.length;
+
+  const handleTeacherNotificationClick = async (id: string) => {
+    await markTeacherNotificationRead(id);
+    setMyTeacherNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  };
 
   const markReportAsRead = (id: string) => {
     if (!readReportIds.includes(id)) {
@@ -198,6 +209,14 @@ export function Header({
     const list = myReports.map(r => r.id || '').filter(Boolean);
     setReadReportIds(list);
     localStorage.setItem('read_report_notification_ids', JSON.stringify(list));
+    
+    // Also mark all teacher notifications
+    myTeacherNotifications.forEach(n => {
+      if (!n.read && n.id) {
+        markTeacherNotificationRead(n.id);
+      }
+    });
+    setMyTeacherNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
 
   const t = (key: any) => getTranslatedText(key, language);
@@ -228,7 +247,7 @@ export function Header({
   );
 
   return (
-    <header id="app-main-header" className="bg-[#0b5e32] text-white sticky top-0 z-50 border-b border-emerald-900/30 shadow-md font-sans relative">
+    <header id="app-main-header" className="bg-[#0b5e32] text-white sticky top-0 z-50 border-b border-emerald-900/30 shadow-md font-sans">
       
       {/* Subtle clean accent line */}
       <div className="h-0.5 w-full bg-[#d4af37]/60"></div>
@@ -487,23 +506,23 @@ export function Header({
                 </div>
 
                 <div className="max-h-80 overflow-y-auto mt-2">
-                  {myReports.length === 0 ? (
+                  {myReports.length === 0 && myTeacherNotifications.length === 0 ? (
                     <div className="py-8 px-4 text-center text-slate-400">
                       <p className="text-xs font-bold leading-relaxed">
                         {language === 'ar' ? 'لا توجد إشعارات لتقارير الجودة حالياً' : 'No quality report notifications currently.'}
                       </p>
                       <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">
-                        {language === 'ar' ? 'تظهر هنا إشعارات فورية عند توجيه تقارير جديدة لمدرستكم.' : 'Notifications will appear here when new reports are sent.'}
+                        {language === 'ar' ? 'تظهر هنا إشعارات فورية عند توجيه تقارير أو تنبيهات.' : 'Notifications will appear here when new reports or alerts are sent.'}
                       </p>
                     </div>
                   ) : (
                     <div className="divide-y divide-slate-100">
-                      {myReports.slice(0, 5).map((rep) => {
+                      {myReports.slice(0, 5).map((rep, index) => {
                         const isUnread = !readReportIds.includes(rep.id || '');
                         return (
                           <div
-                            id={`notif-item-${rep.id}`}
-                            key={`notif-${rep.id}`}
+                            id={`notif-item-${rep.id || index}`}
+                            key={`notif-${rep.id || index}-${index}`}
                             onClick={() => rep.id && markReportAsRead(rep.id)}
                             className={`p-3 px-4 hover:bg-slate-50 transition-colors cursor-pointer flex gap-3 ${isUnread ? 'bg-amber-50/20' : ''}`}
                           >
@@ -527,6 +546,37 @@ export function Header({
                               </p>
                               <p className="text-[10px] text-slate-500 truncate mt-0.5">
                                 {language === 'ar' ? rep.titleAr : (rep.titleEn || rep.titleAr)}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {myTeacherNotifications.slice(0, 5).map((notif, index) => {
+                        const isUnread = !notif.read;
+                        return (
+                          <div
+                            id={`notif-teacher-${notif.id || index}`}
+                            key={`notif-teacher-${notif.id || index}-${index}`}
+                            onClick={() => notif.id && handleTeacherNotificationClick(notif.id)}
+                            className={`p-3 px-4 hover:bg-slate-50 transition-colors cursor-pointer flex gap-3 ${isUnread ? 'bg-sky-50/30' : ''}`}
+                          >
+                            <div className={`p-2 rounded-xl shrink-0 h-10 w-10 flex items-center justify-center ${isUnread ? 'bg-sky-100/60 text-sky-800' : 'bg-slate-100 text-slate-500'}`}>
+                              <Bell className="w-5 h-5" />
+                            </div>
+                            <div className="min-w-0 flex-1 text-right rtl:text-right ltr:text-left">
+                              <div className="flex items-center justify-between mb-0.5">
+                                <span className={`text-[8px] font-semibold uppercase px-2 py-0.5 rounded-md ${isUnread ? 'bg-rose-100 text-rose-800 animate-pulse' : 'bg-slate-100 text-slate-500'}`}>
+                                  {isUnread 
+                                    ? (language === 'ar' ? 'جديد 🔔' : 'New 🔔') 
+                                    : (language === 'ar' ? 'مقروء' : 'Read')
+                                  }
+                                </span>
+                              </div>
+                              <p className="text-[11px] font-black text-slate-800 leading-snug">
+                                {language === 'ar' ? notif.titleAr : notif.titleEn}
+                              </p>
+                              <p className="text-[10px] text-slate-500 mt-0.5 leading-relaxed">
+                                {language === 'ar' ? notif.messageAr : notif.messageEn}
                               </p>
                             </div>
                           </div>
@@ -619,16 +669,42 @@ export function Header({
                     placeholder={language === 'ar' ? 'كلمة السر' : 'Password'}
                     className="px-3 py-1.5 bg-slate-900/90 border border-emerald-500/35 rounded-xl text-[11px] text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500 w-24 sm:w-36 transition-all"
                   />
-                  <button
-                    type="submit"
-                    className="px-3.5 py-1.5 bg-[#0a4d28] hover:bg-[#126b3a] text-white rounded-xl text-[10.5px] font-black transition-all cursor-pointer border border-emerald-500/20 shadow-md whitespace-nowrap"
-                  >
-                    {language === 'ar' ? 'دخول' : 'Log In'}
-                  </button>
+                  <div className="flex flex-col gap-1 items-start">
+                    <button
+                      type="submit"
+                      className="px-3.5 py-1.5 bg-[#0a4d28] hover:bg-[#126b3a] text-white rounded-xl text-[10.5px] font-black transition-all cursor-pointer border border-emerald-500/20 shadow-md whitespace-nowrap w-full"
+                    >
+                      {language === 'ar' ? 'دخول' : 'Log In'}
+                    </button>
+                    <button
+                      type="button"
+                      
+                      onClick={() => {
+                        if (onSelectGuestView) {
+                          onSelectGuestView('forgot-password');
+                        }
+                        setShowAdminLoginForm(false);
+                        
+                        // Scroll down to the Guest Portal
+                        setTimeout(() => {
+                          const el = document.getElementById('login-form-element') || document.getElementById('guest-portal-container');
+                          if (el) {
+                            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          } else {
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }
+                        }, 100);
+                      }}
+
+                      className="text-[9.5px] text-emerald-400/80 hover:text-emerald-300 hover:underline px-1 cursor-pointer"
+                    >
+                      {language === 'ar' ? 'نسيت كلمة السر؟' : 'Forgot Password?'}
+                    </button>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setShowAdminLoginForm(false)}
-                    className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800/80 rounded-lg transition-colors cursor-pointer"
+                    className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800/80 rounded-lg transition-colors cursor-pointer self-start"
                     title={language === 'ar' ? 'إلغاء' : 'Cancel'}
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -641,8 +717,8 @@ export function Header({
                   type="button"
                   onClick={() => {
                     setShowAdminLoginForm(true);
-                    setAdminEmail('admin@moe.om');
-                    setAdminPassword('••••••••');
+                    setAdminEmail('hossam9866@moe.om');
+                    setAdminPassword('Skype123@');
                   }}
                   className="px-3.5 py-2 bg-[#0a4d28] hover:bg-[#126b3a] text-white rounded-xl text-xs font-bold transition-all cursor-pointer border border-white/10 shadow-sm flex items-center gap-1.5"
                 >
@@ -1109,103 +1185,7 @@ export function Header({
             </div>
 
             {/* Session Preset Role Switcher (If in Sandbox) */}
-            {sandboxActive && (
-              <div className="space-y-2.5 pt-3 border-t border-slate-100">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-sans block px-1">
-                  {t('quickRole')}
-                </label>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onSwitchSandboxUser('school');
-                      setIsOpen(false);
-                    }}
-                    className={`p-2.5 rounded-xl text-xs flex items-center gap-2.5 transition-all text-right cursor-pointer ${
-                      userProfile?.role === 'school' && userProfile?.roleType !== 'teacher'
-                        ? 'bg-amber-50 text-amber-950 border border-amber-300 shadow-xs' 
-                        : 'bg-slate-50 text-slate-700 border border-slate-200/70 hover:bg-white'
-                    }`}
-                  >
-                    <div className="p-1.5 rounded-lg bg-amber-100 text-amber-800 shrink-0">
-                      <School className="w-4 h-4" />
-                    </div>
-                    <div className="min-w-0 flex-1 text-right rtl:text-right ltr:text-left">
-                      <p className="font-bold text-slate-900 truncate text-[11px]">{t('alAzaibaSchool')}</p>
-                      <p className="text-[9.5px] text-slate-500 truncate">{t('schoolRep')}</p>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onSwitchSandboxUser('teacher');
-                      setIsOpen(false);
-                    }}
-                    className={`p-2.5 rounded-xl text-xs flex items-center gap-2.5 transition-all text-right cursor-pointer ${
-                      userProfile?.role === 'school' && userProfile?.roleType === 'teacher'
-                        ? 'bg-teal-50 text-teal-950 border border-teal-300 shadow-xs' 
-                        : 'bg-slate-50 text-slate-700 border border-slate-200/70 hover:bg-white'
-                    }`}
-                  >
-                    <div className="p-1.5 rounded-lg bg-teal-100 text-teal-800 shrink-0">
-                      <Users className="w-4 h-4" />
-                    </div>
-                    <div className="min-w-0 flex-1 text-right rtl:text-right ltr:text-left">
-                      <p className="font-bold text-slate-900 truncate text-[11px]">
-                        {language === 'ar' ? 'د. فاطمة السيابي' : 'Dr. Fatma Al-Siyabi'}
-                      </p>
-                      <p className="text-[9.5px] text-slate-500 truncate">
-                        {language === 'ar' ? 'معلم مادة العلوم' : 'Science Teacher'}
-                      </p>
-                    </div>
-                  </button>
-                  
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onSwitchSandboxUser('moderator');
-                      setIsOpen(false);
-                    }}
-                    className={`p-2.5 rounded-xl text-xs flex items-center gap-2.5 transition-all text-right cursor-pointer ${
-                      userProfile?.role === 'moderator' 
-                        ? 'bg-emerald-50 text-emerald-950 border border-emerald-300 shadow-xs' 
-                        : 'bg-slate-50 text-slate-700 border border-slate-200/70 hover:bg-white'
-                    }`}
-                  >
-                    <div className="p-1.5 rounded-lg bg-emerald-100 text-emerald-800 shrink-0">
-                      <CheckSquare className="w-4 h-4" />
-                    </div>
-                    <div className="min-w-0 flex-1 text-right rtl:text-right ltr:text-left">
-                      <p className="font-bold text-slate-900 truncate text-[11px]">{t('salemAlHarthy')}</p>
-                      <p className="text-[9.5px] text-slate-500 truncate">{t('subjectSupervisor')}</p>
-                    </div>
-                  </button>
-                  
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onSwitchSandboxUser('admin');
-                      setIsOpen(false);
-                    }}
-                    className={`p-2.5 rounded-xl text-xs flex items-center gap-2.5 transition-all text-right cursor-pointer ${
-                      userProfile?.role === 'admin' 
-                        ? 'bg-slate-900 text-white border border-slate-950 shadow-xs' 
-                        : 'bg-slate-50 text-slate-700 border border-slate-200/70 hover:bg-white'
-                    }`}
-                  >
-                    <div className={`p-1.5 rounded-lg shrink-0 ${userProfile?.role === 'admin' ? 'bg-amber-400 text-slate-950' : 'bg-slate-200 text-slate-700'}`}>
-                      <Lock className="w-4 h-4" />
-                    </div>
-                    <div className="min-w-0 flex-1 text-right rtl:text-right ltr:text-left">
-                      <p className={`font-bold truncate text-[11px] ${userProfile?.role === 'admin' ? 'text-white' : 'text-slate-900'}`}>{t('khalidAlAmri')}</p>
-                      <p className={`text-[9.5px] truncate ${userProfile?.role === 'admin' ? 'text-slate-300' : 'text-slate-500'}`}>{t('portalAdmin')}</p>
-                    </div>
-                  </button>
-                </div>
-              </div>
-            )}
+            {/* Account Switcher removed as sandbox mode is being phased out */}
 
             {/* Profile / Account details */}
             <div className="space-y-2.5 pt-3 border-t border-slate-100">
@@ -1234,11 +1214,11 @@ export function Header({
                             onChange={(e) => onUpdateSubject?.(e.target.value)}
                             className="bg-white border border-slate-200 text-[#0b5e32] rounded-xl text-xs font-bold px-2.5 py-1.5 focus:outline-none focus:border-[#0b5e32] w-full cursor-pointer shadow-2xs font-sans"
                           >
-                            <option value="" disabled>
+                            <option key="hdr-subj-default" value="" disabled>
                               {language === 'ar' ? 'اختر المادة...' : 'Select Subject...'}
                             </option>
-                            {SUBJECTS.map((s) => (
-                              <option key={s} value={s} className="bg-white text-slate-800">
+                            {SUBJECTS.map((s, index) => (
+                              <option key={`hdr-subj-${s}-${index}`} value={s} className="bg-white text-slate-800">
                                 {translateSubject(s, language)}
                               </option>
                             ))}

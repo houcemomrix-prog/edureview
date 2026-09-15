@@ -12,8 +12,12 @@ interface GuestPortalProps {
   setOperationNotAllowedError: (err: string | null) => void;
   selectedAuthRole: 'none' | 'director' | 'teacher' | 'moderator' | 'admin';
   setSelectedAuthRole: (role: 'none' | 'director' | 'teacher' | 'moderator' | 'admin') => void;
+  
   isSignUpMode: boolean;
   setIsSignUpMode: (mode: boolean) => void;
+  forgotPasswordTrigger?: boolean;
+  setForgotPasswordTrigger?: (trigger: boolean) => void;
+
   regName: string;
   setRegName: (val: string) => void;
   regEmail: string;
@@ -53,9 +57,13 @@ export const GuestPortal: React.FC<GuestPortalProps> = ({
   setOperationNotAllowedError,
   selectedAuthRole,
   setSelectedAuthRole,
+  
   isSignUpMode,
   setIsSignUpMode,
+  forgotPasswordTrigger,
+  setForgotPasswordTrigger,
   regName,
+
   setRegName,
   regEmail,
   setRegEmail,
@@ -84,7 +92,26 @@ export const GuestPortal: React.FC<GuestPortalProps> = ({
   const [newPasswordVal, setNewPasswordVal] = React.useState('');
   const [newPasswordConfirmVal, setNewPasswordConfirmVal] = React.useState('');
   const [forgotError, setForgotError] = React.useState<string | null>(null);
+  
   const [forgotSuccess, setForgotSuccess] = React.useState<string | null>(null);
+
+  // Sync the external trigger to internal state
+  React.useEffect(() => {
+    if (forgotPasswordTrigger) {
+      setForgotPasswordMode(true);
+      setForgotStep('email');
+      setForgotError(null);
+      setForgotSuccess(null);
+    }
+  }, [forgotPasswordTrigger]);
+
+  // Sync internal state closing to external state
+  React.useEffect(() => {
+    if (!forgotPasswordMode && setForgotPasswordTrigger) {
+      setForgotPasswordTrigger(false);
+    }
+  }, [forgotPasswordMode, setForgotPasswordTrigger]);
+
   const [copied, setCopied] = React.useState(false);
   const [emailSending, setEmailSending] = React.useState(false);
   const [realEmailSent, setRealEmailSent] = React.useState<boolean | null>(null);
@@ -105,7 +132,7 @@ export const GuestPortal: React.FC<GuestPortalProps> = ({
 
   const handleForgotEmailSubmit = async () => {
     const trimmed = forgotEmail.trim().toLowerCase();
-    const isAuthorized = trimmed.endsWith('@moe.om') || trimmed === 'housmhousm17@gmail.com' || trimmed === 'school@moe.om' || trimmed === 'teacher@moe.om' || trimmed === 'moderator@moe.om' || trimmed === 'admin@moe.om';
+    const isAuthorized = trimmed.endsWith('@moe.om') || trimmed === 'housmhousm17@gmail.com' || trimmed === 'school@moe.om' || trimmed === 'teacher@moe.om' || trimmed === 'moderator@moe.om' || trimmed === 'hossam9866@moe.om';
     
     if (!trimmed) {
       setForgotError(language === 'ar' ? 'يرجى إدخال البريد الإلكتروني.' : 'Please enter your email.');
@@ -114,7 +141,7 @@ export const GuestPortal: React.FC<GuestPortalProps> = ({
     
     if (!isAuthorized) {
       setForgotError(language === 'ar' 
-        ? "عذراً، يجب أن يكون البريد الإلكتروني تابعاً لوزارة التربية والتعليم وينتهي بـ @moe.om" 
+        ? "عذراً، يجب أن يكون البريد الإلكتروني تابعاً لوزارة التعليم وينتهي بـ @moe.om" 
         : "Access Denied. For safety, password recovery is restricted to official email addresses ending with @moe.om");
       return;
     }
@@ -234,14 +261,14 @@ export const GuestPortal: React.FC<GuestPortalProps> = ({
         
         <div className="space-y-1.5">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 border border-emerald-100 rounded-full text-[10px] text-emerald-800 font-bold tracking-wide" id="ministry-badge">
-            {language === 'ar' ? "سلطنة عُمان • وزارة التربية والتعليم" : "Sultanate of Oman • Ministry of Education"}
+            {language === 'ar' ? "سلطنة عُمان • وزارة التعليم" : "Sultanate of Oman • Ministry of Education"}
           </div>
           <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight leading-snug" id="main-portal-title">
-            {language === 'ar' ? "البوابة الموحدة لفحص وتدقيق الامتحانات" : "Unified Exam Review & Moderation Portal"}
+            {language === 'ar' ? "البوابة الموحدة لفحص وتدقيق أدوات التقويم" : "Unified Assessment Review & Moderation Portal"}
           </h1>
           <p className="text-slate-500 text-xs sm:text-sm leading-relaxed max-w-lg mx-auto font-normal">
             {language === 'ar' 
-              ? "منظومة إلكترونية تربوية متكاملة لرفع وتدقيق واعتماد أدوات القياس والتقويم المدرسي."
+              ? "منظومة إلكترونية تربوية متكاملة لرفع وتدقيق واعتماد أدوات التقويم."
               : "Unified educational platform for submitting, verifying, and moderating school assessments."}
           </p>
         </div>
@@ -281,7 +308,7 @@ export const GuestPortal: React.FC<GuestPortalProps> = ({
       )}
 
       {/* Central Unified Auth Workspace Card Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 text-left max-w-4xl mx-auto font-sans">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 text-left max-w-4xl mx-auto font-sans" id="guest-portal-container">
         
         {/* Left Column: 4-Segment Selective Role Cards Grid -> Replaced with Drop Down Menu on desktop and quick 2x2 grid on mobile */}
         <div className="lg:col-span-5 space-y-4" ref={dropdownRef}>
@@ -924,11 +951,11 @@ export const GuestPortal: React.FC<GuestPortalProps> = ({
                         }}
                         className="w-full px-3 py-2 border border-slate-205 rounded-xl text-xs text-slate-800 bg-white focus:outline-none focus:border-indigo-650 font-bold cursor-pointer"
                       >
-                        <option value="">{language === 'ar' ? '-- اختر الولاية --' : '-- Choose Wilayat --'}</option>
+                        <option key="guest-wilaya-default" value="">{language === 'ar' ? '-- اختر الولاية --' : '-- Choose Wilayat --'}</option>
                         {OMAN_WUSTA_SCHOOLS.map(w => (
-                          <option key={w.id} value={w.id}>{language === 'ar' ? w.nameAr : w.nameEn}</option>
+                          <option key={`guest-wilaya-opt-${w.id}`} value={w.id}>{language === 'ar' ? w.nameAr : w.nameEn}</option>
                         ))}
-                        <option value="custom">{language === 'ar' ? '✍️ كتابة يدوية (خارج الوسطى)' : '✍️ Custom Entry (Other)'}</option>
+                        <option key="guest-wilaya-custom" value="custom">{language === 'ar' ? '✍️ كتابة يدوية (خارج الوسطى)' : '✍️ Custom Entry (Other)'}</option>
                       </select>
                     </div>
 
@@ -945,8 +972,8 @@ export const GuestPortal: React.FC<GuestPortalProps> = ({
                           onChange={(e) => setRegSchoolName(e.target.value)}
                           className="w-full px-3 py-2 border border-slate-205 rounded-xl text-xs text-slate-900 bg-white focus:outline-none focus:border-indigo-650 font-black text-[#051C3F] cursor-pointer"
                         >
-                          {OMAN_WUSTA_SCHOOLS.find(w => w.id === signupWilaya)?.schools.map(s => (
-                            <option key={s.nameAr} value={s.nameAr}>{language === 'ar' ? s.nameAr : s.nameEn}</option>
+                          {OMAN_WUSTA_SCHOOLS.find(w => w.id === signupWilaya)?.schools.map((s, index) => (
+                            <option key={`signup-sch-${s.nameAr}-${index}`} value={s.nameAr}>{language === 'ar' ? s.nameAr : s.nameEn}</option>
                           ))}
                         </select>
                       ) : (
@@ -974,8 +1001,8 @@ export const GuestPortal: React.FC<GuestPortalProps> = ({
                       onChange={(e) => setRegSubject(e.target.value)}
                       className="w-full px-3.5 py-2 text-xs text-slate-800 border border-slate-202 rounded-xl bg-white focus:outline-none focus:border-indigo-650 font-semibold cursor-pointer"
                     >
-                      {SUBJECTS.map(s => (
-                        <option key={s} value={s}>{translateSubject(s, language)}</option>
+                      {SUBJECTS.map((s, index) => (
+                        <option key={`guest-subj-${s}-${index}`} value={s}>{translateSubject(s, language)}</option>
                       ))}
                     </select>
                     <p className="text-[9px] text-[#A56705] font-semibold leading-relaxed mt-1 font-sans">
@@ -1116,38 +1143,12 @@ export const GuestPortal: React.FC<GuestPortalProps> = ({
                   <path fill="#755500" d="M12 12v11h11V12H12z" opacity=".07"/>
                   <path fill="#5c4300" d="M12 12v11h11V12H12z" opacity=".2"/>
                 </svg>
-                <span>{language === 'ar' ? "دخول عبر الإيميل الوزاري" : "Ministry Single Sign-On (SSO / Active Directory)"}</span>
+                <span>{language === 'ar' ? "الاستمرار بالإيميل الوزاري" : "Continue with ministerial email"}</span>
               </button>
             )}
 
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs pt-1 select-none">
               
-              {/* Bypass/Demo accounts login button */}
-              <button
-                type="button"
-                id="bypass-demo-logins-btn"
-                onClick={async () => {
-                  if (selectedAuthRole === 'none') {
-                    setOperationNotAllowedError(language === 'ar'
-                      ? "الرجاء اختيار صفتك الأكاديمية أو المهنية أولاً لتسجيل الدخول التجريبي."
-                      : "Please select your academic or professional status first to sign in.");
-                    return;
-                  }
-                  let targetEmail = 'school@moe.om';
-                  let targetPass = 'Password123';
-                  if (selectedAuthRole === 'teacher') targetEmail = 'teacher@moe.om';
-                  else if (selectedAuthRole === 'moderator') targetEmail = 'moderator@moe.om';
-                  else if (selectedAuthRole === 'admin') {
-                    targetEmail = 'admin@moe.om';
-                    targetPass = 'AdminPassword123';
-                  }
-                  await handleAuthForCredentials(targetEmail, targetPass);
-                }}
-                className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold text-[10.5px] px-4 py-2.5 rounded-xl cursor-pointer transition-colors inline-flex items-center gap-1.5 leading-none w-full sm:w-auto justify-center"
-              >
-                <span>⚡ {language === 'ar' ? "دخول تجريبي فوري مجاني" : "Bypass Preview Login (Sandbox)"}</span>
-              </button>
-
               <button
                 type="button"
                 id="toggle-sign-up-mode-btn"
@@ -1203,7 +1204,7 @@ export const GuestPortal: React.FC<GuestPortalProps> = ({
 
           <div className="space-y-2.5" dir={language === 'ar' ? 'rtl' : 'ltr'}>
             <div className={`text-[11px] font-bold text-slate-300 ${language === 'ar' ? 'text-right' : 'text-left'}`}>
-              <strong>{language === 'ar' ? "المرسل:" : "From:"}</strong> {language === 'ar' ? "وزارة التربية والتعليم - موزع رموز الأمان المعتمد <security-auth@moe.om>" : "Ministry of Education Security Hub <security-auth@moe.om>"}
+              <strong>{language === 'ar' ? "المرسل:" : "From:"}</strong> {language === 'ar' ? "وزارة التعليم - موزع رموز الأمان المعتمد <security-auth@moe.om>" : "Ministry of Education Security Hub <security-auth@moe.om>"}
             </div>
             <div className={`text-[11px] font-extrabold text-[#d2ad42] ${language === 'ar' ? 'text-right' : 'text-left'}`}>
               <strong>{language === 'ar' ? "الموضوع:" : "Subject:"}</strong> {language === 'ar' ? "رمز التثبت المخصص لإعادة تعيين كلمة مرور بوابة الامتحانات" : "Your Security Blueprint OTP - Ministry of Education Portal"}

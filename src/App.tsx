@@ -63,6 +63,7 @@ import { OverviewStats } from './components/OverviewStats';
 import { AIPrecheckModal } from './components/AIPrecheckModal';
 import { LogsTimeline } from './components/LogsTimeline';
 import { AdminStatsDashboard } from './components/AdminStatsDashboard';
+import { SubjectsManagerView } from './components/SubjectsManagerView';
 import { SettingsView } from './components/SettingsView';
 import { ExamsView } from './components/ExamsView';
 import { ResultsView } from './components/ResultsView';
@@ -79,7 +80,7 @@ import { SignatureVerifierView } from './components/SignatureVerifierView';
 import { GuestPortal } from './components/GuestPortal';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { OMAN_WUSTA_SCHOOLS } from './data/schoolsData';
-import { Language, getTranslatedText, translateSubject, translateGrade, translateStatus } from './lib/translations';
+import { Language, getTranslatedText, translateSubject, translateGrade, translateStatus, isSubjectMatch, isUniversalSubject } from './lib/translations';
 
 // Standard constant select options
 const GRADES = [
@@ -88,16 +89,18 @@ const GRADES = [
   'Grade 11', 'Grade 12'
 ];
 
-const SUBJECTS = [
-  'Arabic Language', 'English Language', 'Mathematics', 
-  'Science', 'Physics', 'Chemistry', 'Biology', 
-  'Islamic Studies', 'Social Studies', 'Information Technology',
-  'Applied Sciences', 'Individual Skills'
-];
+
+import { getSubjectsList, DEFAULT_SUBJECTS } from './services/db';
+
 
 export default function App() {
   // State management
   const [sandbox, setSandbox] = useState<boolean>(isSandboxActive());
+  const [SUBJECTS, setSUBJECTS] = useState<string[]>(DEFAULT_SUBJECTS);
+  
+  useEffect(() => {
+    getSubjectsList().then(list => setSUBJECTS(list)).catch(console.error);
+  }, []);
   const [language, setLanguage] = useState<Language>(() => {
     const saved = localStorage.getItem('oman_moe_lang');
     return (saved === 'ar' || saved === 'en') ? saved : 'en';
@@ -118,7 +121,7 @@ export default function App() {
 
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'exams' | 'results' | 'standards' | 'settings' | 'archive' | 'databases'>('overview');
-  const [adminTab, setAdminTab] = useState<'catalog' | 'stats' | 'database' | 'schools' | 'stamps' | 'signatures' | 'design'>('stats');
+  const [adminTab, setAdminTab] = useState<'catalog' | 'stats' | 'database' | 'schools' | 'subjects' | 'stamps' | 'signatures' | 'design'>('stats');
   const [principalTab, setPrincipalTab] = useState<'staff' | 'catalog' | 'archive'>('staff');
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
@@ -195,7 +198,7 @@ export default function App() {
   const [assignedSubjectPick, setAssignedSubjectPick] = useState(SUBJECTS[0]);
 
   // Guest routing and subviews state
-  const [guestView, setGuestView] = useState<'welcome' | 'login-portal' | 'admin-portal'>('login-portal');
+  const [guestView, setGuestView] = useState<'welcome' | 'login-portal' | 'admin-portal' | 'forgot-password'>('login-portal');
 
   // Unified 4-role selection & input states (now with 'none' option)
   const [selectedAuthRole, setSelectedAuthRole] = useState<'none' | 'director' | 'teacher' | 'moderator' | 'admin'>('none');
@@ -220,17 +223,17 @@ export default function App() {
       setLoginEmail('');
       setLoginPassword('');
     } else if (selectedAuthRole === 'director') {
-      setLoginEmail('school@moe.om');
-      setLoginPassword('Password123');
+      setLoginEmail('');
+      setLoginPassword('');
     } else if (selectedAuthRole === 'teacher') {
-      setLoginEmail('teacher@moe.om');
-      setLoginPassword('Password123');
+      setLoginEmail('');
+      setLoginPassword('');
     } else if (selectedAuthRole === 'moderator') {
-      setLoginEmail('moderator@moe.om');
-      setLoginPassword('Password123');
+      setLoginEmail('');
+      setLoginPassword('');
     } else if (selectedAuthRole === 'admin') {
-      setLoginEmail('admin@moe.om');
-      setLoginPassword('AdminPassword123');
+      setLoginEmail('hossam9866@moe.om');
+      setLoginPassword('Skype123@');
     }
   }, [selectedAuthRole]);
 
@@ -269,6 +272,7 @@ export default function App() {
   const [auditSemester, setAuditSemester] = useState('الفصل الدراسي الثاني');
   const [auditSuggestedDevelopment, setAuditSuggestedDevelopment] = useState('برنامج إرشادي على تطوير مفردات التقويم وأدوات الرصد الفنية');
   const [auditExaminerName, setAuditExaminerName] = useState('أ. حسان بن علي الجنيبي');
+  const [auditConformanceStatus, setAuditConformanceStatus] = useState<'conforming' | 'non-conforming' | null>(null);
   const [auditPrincipalName, setAuditPrincipalName] = useState('أ. محمد بن راشد الجنيبي');
 
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
@@ -1321,6 +1325,10 @@ export default function App() {
       handleError(language === 'ar' ? 'يجب تسجيل الدخول للقيام بالأرشفة.' : 'Please log in to archive forms.');
       return;
     }
+    if (!auditConformanceStatus) {
+      handleError(language === 'ar' ? 'يجب تحديد حالة المطابقة قبل الاعتماد.' : 'Please select conformance status before archiving.');
+      return;
+    }
     setIsArchiving(true);
     try {
       const assessmentId = currentAssessment?.id || 'temp_' + Math.random().toString(36).substr(2, 9);
@@ -1342,7 +1350,7 @@ export default function App() {
         element: 'بند مطابقة تفصيلية',
         gradeClass: o.gradeClass || grade,
         tool: o.tool || 'أداة تقويم',
-        status: language === 'ar' ? 'مطابق للشروط فلياً' : 'Conforming',
+        status: auditConformanceStatus === 'conforming' ? (language === 'ar' ? 'مطابق للشروط فلياً' : 'Conforming') : (language === 'ar' ? 'غير مطابق' : 'Non-conforming'),
         notes: o.notes
       }));
 
@@ -1384,7 +1392,7 @@ export default function App() {
         examinerSignedName: auditExaminerName || userProfile.name || 'أ. مشرف المادة المعين',
         examinerSignatureQrData: examinerSignatureCode,
         examinerSignatureStampUrl: 'Examiner verified electronically',
-        conformanceStatus: 'conforming',
+        conformanceStatus: auditConformanceStatus || 'conforming',
         hasGradeRevisions: false,
         // Step 2: Forwarded to Teacher (Pending Teacher signature)
         isTeacherSigned: false,
@@ -1566,17 +1574,9 @@ export default function App() {
     }
 
     if (sandbox) {
-      // Setup simulated user profile based on active selection (defaults to school representor)
-      const cachedSimRole = localStorage.getItem('oman_moe_sim_role') as 'school' | 'moderator' || 'school';
-      const simUid = cachedSimRole === 'school' ? 'demo-school-1' : 'demo-mod-1';
-      
-      setDataLoading(true);
-      getUserProfile(simUid).then((prof) => {
-        if (!localStorage.getItem('oman_moe_mss_user')) {
-          setUserProfile(prof);
-        }
-        setDataLoading(false);
-      });
+      // Sandbox mode has been removed, fallback silently if stale state exists
+      setSandbox(false);
+      setSandboxActive(false);
     } else {
       // Connect to genuine Firebase Authentication states
       setAuthLoading(true);
@@ -1682,7 +1682,7 @@ export default function App() {
     if (userProfile) {
       fetchAssessmentList();
       fetchArchivedFormsList();
-      if (userProfile.subject) {
+      if (userProfile.subject && !isUniversalSubject(userProfile.subject)) {
         setSelectedSubject(userProfile.subject);
         setFormSubject(userProfile.subject);
       } else {
@@ -1982,113 +1982,14 @@ export default function App() {
     const customPass = savedPasswords[trimmedEmail];
     
     // Check for our specified mock test account shortcuts to support rapid testing
-    if (trimmedEmail === 'school@moe.om') {
-      const expectedPass = customPass || 'Password123';
-      if (pass === expectedPass) {
-        setSandboxActive(true);
-        setSandbox(true);
-        let prof = await getUserProfile('demo-school-1');
-        if (!prof) {
-          prof = {
-            uid: 'demo-school-1',
-            name: 'Waleed Al-Kharusi (School Principal)',
-            email: 'school@moe.om',
-            role: 'school',
-            roleType: 'administrative',
-            schoolName: 'Al-Azaiba School',
-            createdAt: new Date().toISOString()
-          };
-          await createUserProfile(prof);
-        }
-        if (profileUnsubscribeRef.current) {
-          profileUnsubscribeRef.current();
-        }
-        const unsub = subscribeToUserProfile('demo-school-1', (updatedProf) => {
-          if (updatedProf) {
-            setUserProfile(updatedProf);
-          }
-        });
-        profileUnsubscribeRef.current = unsub;
-        handleSuccess("Authenticated successfully as School Manager / Principal (Sandbox Mode).");
-        return;
-      } else {
-        handleError("Incorrect portal password. Please double check.");
-        return;
-      }
-    }
+    
 
-    if (trimmedEmail === 'teacher@moe.om') {
-      const expectedPass = customPass || 'Password123';
-      if (pass === expectedPass) {
-        setSandboxActive(true);
-        setSandbox(true);
-        let prof = await getUserProfile('demo-teacher-1');
-        if (!prof) {
-          prof = {
-            uid: 'demo-teacher-1',
-            name: 'Dr. Fatma Al-Siyabi (Subject Teacher)',
-            email: 'teacher@moe.om',
-            role: 'school',
-            roleType: 'teacher',
-            schoolName: 'Al-Azaiba Basic Education School',
-            subject: 'Science',
-            createdAt: new Date().toISOString()
-          };
-          await createUserProfile(prof);
-        }
-        if (profileUnsubscribeRef.current) {
-          profileUnsubscribeRef.current();
-        }
-        const unsub = subscribeToUserProfile('demo-teacher-1', (updatedProf) => {
-          if (updatedProf) {
-            setUserProfile(updatedProf);
-          }
-        });
-        profileUnsubscribeRef.current = unsub;
-        handleSuccess("Authenticated successfully as Science Subject Teacher (Sandbox Mode).");
-        return;
-      } else {
-        handleError("Incorrect portal password. Please double check.");
-        return;
-      }
-    }
+    
 
-    if (trimmedEmail === 'moderator@moe.om') {
-      const expectedPass = customPass || 'Password123';
-      if (pass === expectedPass) {
-        setSandboxActive(true);
-        setSandbox(true);
-        let prof = await getUserProfile('demo-mod-1');
-        if (!prof) {
-          prof = {
-            uid: 'demo-mod-1',
-            name: 'Salem Al-Harthy (Subject Auditor)',
-            email: 'moderator@moe.om',
-            role: 'moderator',
-            subject: 'Mathematics',
-            createdAt: new Date().toISOString()
-          };
-          await createUserProfile(prof);
-        }
-        if (profileUnsubscribeRef.current) {
-          profileUnsubscribeRef.current();
-        }
-        const unsub = subscribeToUserProfile('demo-mod-1', (updatedProf) => {
-          if (updatedProf) {
-            setUserProfile(updatedProf);
-          }
-        });
-        profileUnsubscribeRef.current = unsub;
-        handleSuccess("Authenticated successfully as Mathematics Subject Supervisor / Auditor (Sandbox Mode).");
-        return;
-      } else {
-        handleError("Incorrect portal password. Please double check.");
-        return;
-      }
-    }
+    
 
-    if (trimmedEmail === 'admin@moe.om') {
-      const expectedPass = customPass || 'AdminPassword123';
+    if (trimmedEmail === 'hossam9866@moe.om') {
+      const expectedPass = customPass || 'Skype123@';
       if (pass === expectedPass) {
         setSandboxActive(true);
         setSandbox(true);
@@ -2096,8 +1997,8 @@ export default function App() {
         if (!prof) {
           prof = {
             uid: 'demo-admin-1',
-            name: 'Khalid Al-Amri (Portal Administrator)',
-            email: 'admin@moe.om',
+            name: 'حسام عمري',
+            email: 'hossam9866@moe.om',
             role: 'admin',
             createdAt: new Date().toISOString()
           };
@@ -2298,8 +2199,8 @@ export default function App() {
 
       const adminProfile: UserProfile = {
         uid: 'demo-admin-1',
-        name: 'Khalid Al-Amri',
-        email: 'admin@moe.om',
+        name: 'حسام عمري',
+        email: 'hossam9866@moe.om',
         role: 'admin',
         createdAt: new Date().toISOString()
       };
@@ -2551,11 +2452,17 @@ export default function App() {
       }
     }
 
-    // Examiners see files of their specialty subject only
+    // Examiners / Moderators see files of their specialty subject, or all files if universal auditor or 'ALL' selected
     if (userProfile && userProfile.role === 'moderator') {
-      const targetSubject = (userProfile.subject || '').toLowerCase().trim();
-      if (!item.subject || !targetSubject || item.subject.toLowerCase().trim() !== targetSubject) {
-        return false;
+      const isUniversalAuditor = isUniversalSubject(userProfile.subject);
+      if (selectedSubject && selectedSubject !== 'ALL') {
+        if (!isSubjectMatch(selectedSubject, item.subject)) {
+          return false;
+        }
+      } else if (!isUniversalAuditor && selectedSubject !== 'ALL') {
+        if (!isSubjectMatch(userProfile.subject, item.subject)) {
+          return false;
+        }
       }
     }
 
@@ -2563,7 +2470,9 @@ export default function App() {
                           item.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           item.schoolName.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesGrade = selectedGrade ? item.grade === selectedGrade : true;
-    const matchesSubject = selectedSubject ? item.subject === selectedSubject : true;
+    const matchesSubject = (selectedSubject && selectedSubject !== 'ALL') 
+      ? isSubjectMatch(selectedSubject, item.subject) 
+      : true;
     const matchesStatus = selectedStatus ? item.status === selectedStatus : true;
 
     return matchesSearch && matchesGrade && matchesSubject && matchesStatus;
@@ -2571,7 +2480,7 @@ export default function App() {
 
   return (
     <div 
-      className={`min-h-screen bg-slate-50/70 dark:bg-slate-950 flex flex-col font-sans text-slate-800 dark:text-slate-100 antialiased ${language === 'ar' ? 'rtl font-sans' : 'ltr'}`}
+      className={`min-h-screen bg-slate-100/90 dark:bg-slate-950 flex flex-col font-sans text-slate-800 dark:text-slate-100 antialiased ${language === 'ar' ? 'rtl font-sans' : 'ltr'}`}
       dir={language === 'ar' ? 'rtl' : 'ltr'}
     >
       {formStyles && (
@@ -2612,7 +2521,12 @@ export default function App() {
         onSwitchSandboxUser={handleSwitchSandboxUser}
         authLoading={authLoading}
         guestView={guestView}
-        onSelectGuestView={setGuestView}
+        onSelectGuestView={(view) => {
+          setGuestView(view);
+          if (view === 'forgot-password') {
+            setSelectedAuthRole('admin');
+          }
+        }}
         language={language}
         onToggleLanguage={(lang) => {
           setLanguage(lang);
@@ -2671,6 +2585,7 @@ export default function App() {
         <AnimatePresence>
           {errorMessage && (
             <motion.div 
+              key="app-error-notification"
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
@@ -2693,6 +2608,7 @@ export default function App() {
 
           {successMessage && (
             <motion.div 
+              key="app-success-notification"
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
@@ -2726,8 +2642,16 @@ export default function App() {
             setOperationNotAllowedError={setOperationNotAllowedError}
             selectedAuthRole={selectedAuthRole}
             setSelectedAuthRole={setSelectedAuthRole}
+            
             isSignUpMode={isSignUpMode}
             setIsSignUpMode={setIsSignUpMode}
+            forgotPasswordTrigger={guestView === 'forgot-password'}
+            setForgotPasswordTrigger={(trigger) => {
+              if (!trigger && guestView === 'forgot-password') {
+                setGuestView('login-portal');
+              }
+            }}
+
             regName={regName}
             setRegName={setRegName}
             regEmail={regEmail}
@@ -2768,26 +2692,7 @@ export default function App() {
             {/* MAIN CANVAS CONTENT */}
             <div className="space-y-7 min-w-0">
 
-              {userProfile && userProfile.role === 'moderator' && !userProfile.subject && (
-                <div className="p-5 bg-amber-50/80 border border-amber-200 text-amber-900 rounded-3xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xs animate-in fade-in duration-200">
-                  <div className="flex items-start gap-3">
-                    <span className="text-xl">⚠️</span>
-                    <div>
-                      <h4 className="font-heading font-black text-xs text-amber-950 uppercase tracking-wide">
-                        {language === 'ar' ? 'تنبيه: بانتظار تحديد المادة العلمية من قِبل مدير النظام' : 'Notice: Specialty Assignment Pending'}
-                      </h4>
-                      <p className="text-[11px] text-amber-700/90 leading-relaxed font-sans mt-0.5">
-                        {language === 'ar' 
-                          ? 'مرحباً بك في البوابة الوطنية بسلطنة عُمان. لم يتم إسناد أو تحديد مادتك الأكاديمية أو تخصصك الفني في قاعدة البيانات حتى الآن من قبل مدير النظام. يرجى مراجعة مسؤول إدارة النظام بوزارة التربية والتعليم لتحديد تخصصك ومتابعة أعمال التدقيق.'
-                          : 'Welcome to the Oman portal. Your designated academic subject specialty has not been assigned in the database yet. Please contact the System Administrator to assign your specialty.'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="px-3 py-1 bg-amber-100 rounded-full text-[9px] font-black text-amber-800 uppercase tracking-widest shrink-0 self-start md:self-auto">
-                    {language === 'ar' ? 'بانتظار الإسناد' : 'Awaiting Assignment'}
-                  </div>
-                </div>
-              )}
+
 
               {activeTab === 'overview' && (
                 <div className="space-y-7 animate-in fade-in duration-200">
@@ -2807,7 +2712,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setAdminTab('stats')}
-                  className={`shrink-0 sm:flex-1 py-1.5 sm:py-2 px-2.5 sm:px-4 rounded-lg sm:rounded-xl text-[10px] sm:text-[11px] font-bold tracking-wide leading-none whitespace-nowrap transition-all cursor-pointer ${
+                  className={`shrink-0 sm:flex-1 py-1.5 sm:py-2 px-2.5 sm:px-4 rounded-lg sm:rounded-xl text-[10px] sm:text-[11px] font-bold leading-none whitespace-nowrap transition-all cursor-pointer ${
                     adminTab === 'stats' 
                       ? 'bg-[#0b5e32] text-white shadow-xs' 
                       : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
@@ -2818,7 +2723,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setAdminTab('database')}
-                  className={`shrink-0 sm:flex-1 py-1.5 sm:py-2 px-2.5 sm:px-4 rounded-lg sm:rounded-xl text-[10px] sm:text-[11px] font-bold tracking-wide leading-none whitespace-nowrap transition-all cursor-pointer ${
+                  className={`shrink-0 sm:flex-1 py-1.5 sm:py-2 px-2.5 sm:px-4 rounded-lg sm:rounded-xl text-[10px] sm:text-[11px] font-bold leading-none whitespace-nowrap transition-all cursor-pointer ${
                     adminTab === 'database' 
                       ? 'bg-[#0b5e32] text-white shadow-xs' 
                       : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
@@ -2829,7 +2734,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setAdminTab('schools')}
-                  className={`shrink-0 sm:flex-1 py-1.5 sm:py-2 px-2.5 sm:px-4 rounded-lg sm:rounded-xl text-[10px] sm:text-[11px] font-bold tracking-wide leading-none whitespace-nowrap transition-all cursor-pointer ${
+                  className={`shrink-0 sm:flex-1 py-1.5 sm:py-2 px-2.5 sm:px-4 rounded-lg sm:rounded-xl text-[10px] sm:text-[11px] font-bold leading-none whitespace-nowrap transition-all cursor-pointer ${
                     adminTab === 'schools' 
                       ? 'bg-[#0b5e32] text-white shadow-xs' 
                       : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
@@ -2840,7 +2745,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setAdminTab('stamps')}
-                  className={`shrink-0 sm:flex-1 py-1.5 sm:py-2 px-2.5 sm:px-4 rounded-lg sm:rounded-xl text-[10px] sm:text-[11px] font-bold tracking-wide leading-none whitespace-nowrap transition-all cursor-pointer ${
+                  className={`shrink-0 sm:flex-1 py-1.5 sm:py-2 px-2.5 sm:px-4 rounded-lg sm:rounded-xl text-[10px] sm:text-[11px] font-bold leading-none whitespace-nowrap transition-all cursor-pointer ${
                     adminTab === 'stamps' 
                       ? 'bg-[#0b5e32] text-white shadow-xs' 
                       : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
@@ -2851,7 +2756,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setAdminTab('signatures')}
-                  className={`shrink-0 sm:flex-1 py-1.5 sm:py-2 px-2.5 sm:px-4 rounded-lg sm:rounded-xl text-[10px] sm:text-[11px] font-bold tracking-wide leading-none whitespace-nowrap transition-all cursor-pointer ${
+                  className={`shrink-0 sm:flex-1 py-1.5 sm:py-2 px-2.5 sm:px-4 rounded-lg sm:rounded-xl text-[10px] sm:text-[11px] font-bold leading-none whitespace-nowrap transition-all cursor-pointer ${
                     adminTab === 'signatures' 
                       ? 'bg-[#0b5e32] text-white shadow-xs' 
                       : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
@@ -2862,7 +2767,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setAdminTab('design')}
-                  className={`shrink-0 sm:flex-1 py-1.5 sm:py-2 px-2.5 sm:px-4 rounded-lg sm:rounded-xl text-[10px] sm:text-[11px] font-bold tracking-wide leading-none whitespace-nowrap transition-all cursor-pointer ${
+                  className={`shrink-0 sm:flex-1 py-1.5 sm:py-2 px-2.5 sm:px-4 rounded-lg sm:rounded-xl text-[10px] sm:text-[11px] font-bold leading-none whitespace-nowrap transition-all cursor-pointer ${
                     adminTab === 'design' 
                       ? 'bg-[#0b5e32] text-white shadow-xs' 
                       : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
@@ -2879,7 +2784,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setPrincipalTab('staff')}
-                  className={`flex-1 py-1.5 px-2 sm:px-3 rounded-lg sm:rounded-xl text-[10px] sm:text-[10.5px] font-bold tracking-wide leading-none whitespace-nowrap transition-all cursor-pointer ${
+                  className={`flex-1 py-1.5 px-2 sm:px-3 rounded-lg sm:rounded-xl text-[10px] sm:text-[10.5px] font-bold leading-none whitespace-nowrap transition-all cursor-pointer ${
                     principalTab === 'staff' 
                       ? 'bg-[#0b5e32] text-white shadow-xs' 
                       : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
@@ -2890,7 +2795,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setPrincipalTab('catalog')}
-                  className={`flex-1 py-1.5 px-2 sm:px-3 rounded-lg sm:rounded-xl text-[10px] sm:text-[10.5px] font-bold tracking-wide leading-none whitespace-nowrap transition-all cursor-pointer ${
+                  className={`flex-1 py-1.5 px-2 sm:px-3 rounded-lg sm:rounded-xl text-[10px] sm:text-[10.5px] font-bold leading-none whitespace-nowrap transition-all cursor-pointer ${
                     principalTab === 'catalog' 
                       ? 'bg-[#0b5e32] text-white shadow-xs' 
                       : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
@@ -2901,7 +2806,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setPrincipalTab('archive')}
-                  className={`flex-1 py-1.5 px-2 sm:px-3 rounded-lg sm:rounded-xl text-[10px] sm:text-[10.5px] font-bold tracking-wide leading-none whitespace-nowrap transition-all cursor-pointer ${
+                  className={`flex-1 py-1.5 px-2 sm:px-3 rounded-lg sm:rounded-xl text-[10px] sm:text-[10.5px] font-bold leading-none whitespace-nowrap transition-all cursor-pointer ${
                     principalTab === 'archive' 
                       ? 'bg-[#0b5e32] text-white shadow-xs' 
                       : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
@@ -2918,7 +2823,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setPrincipalTab('staff')} // staff holds default TeacherUploadsView
-                  className={`flex-1 py-1.5 px-2.5 sm:px-3 rounded-lg sm:rounded-xl text-[10px] sm:text-[10.5px] font-bold tracking-wide leading-none whitespace-nowrap transition-all cursor-pointer ${
+                  className={`flex-1 py-1.5 px-2.5 sm:px-3 rounded-lg sm:rounded-xl text-[10px] sm:text-[10.5px] font-bold leading-none whitespace-nowrap transition-all cursor-pointer ${
                     principalTab !== 'archive' 
                       ? 'bg-[#0b5e32] text-white shadow-xs' 
                       : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
@@ -2929,7 +2834,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setPrincipalTab('archive')}
-                  className={`flex-1 py-1.5 px-2.5 sm:px-3 rounded-lg sm:rounded-xl text-[10px] sm:text-[10.5px] font-bold tracking-wide leading-none whitespace-nowrap transition-all cursor-pointer ${
+                  className={`flex-1 py-1.5 px-2.5 sm:px-3 rounded-lg sm:rounded-xl text-[10px] sm:text-[10.5px] font-bold leading-none whitespace-nowrap transition-all cursor-pointer ${
                     principalTab === 'archive' 
                       ? 'bg-[#0b5e32] text-white shadow-xs' 
                       : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
@@ -2943,7 +2848,7 @@ export default function App() {
             {userProfile.role === 'admin' && adminTab === 'stats' ? (
               <AdminStatsDashboard assessments={assessments} language={language} />
             ) : userProfile.role === 'admin' && adminTab === 'database' ? (
-              <UserDatabaseView language={language} />
+              <UserDatabaseView language={language} subjects={SUBJECTS} />
             ) : userProfile.role === 'admin' && adminTab === 'schools' ? (
               <SchoolsDatabaseView language={language} />
             ) : userProfile.role === 'admin' && adminTab === 'stamps' ? (
@@ -3171,7 +3076,7 @@ export default function App() {
                             onChange={(e) => setFormGrade(e.target.value)}
                             className="w-full px-3 py-3 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none bg-slate-50/50 font-medium cursor-pointer"
                           >
-                            {GRADES.map(g => <option key={g} value={g}>{translateGrade(g, language)}</option>)}
+                            {GRADES.map((g, index) => <option key={`app-grade-${g}-${index}`} value={g}>{translateGrade(g, language)}</option>)}
                           </select>
                         </div>
                         <div className="space-y-1.5">
@@ -3197,9 +3102,9 @@ export default function App() {
                             }`}
                           >
                             {userProfile.roleType === 'teacher' && userProfile.subject ? (
-                              <option value={userProfile.subject}>{translateSubject(userProfile.subject, language)}</option>
+                              <option key={`app-locked-subj-${userProfile.subject}`} value={userProfile.subject}>{translateSubject(userProfile.subject, language)}</option>
                             ) : (
-                              SUBJECTS.map(s => <option key={s} value={s}>{translateSubject(s, language)}</option>)
+                              SUBJECTS.map((s, index) => <option key={`app-subj-${s}-${index}`} value={s}>{translateSubject(s, language)}</option>)
                             )}
                           </select>
                           {userProfile.roleType === 'teacher' && userProfile.subject && (
@@ -3435,27 +3340,27 @@ export default function App() {
                         onChange={(e) => setSelectedGrade(e.target.value)}
                         className="px-3 py-2 border border-slate-100 rounded-xl text-xs text-slate-600 bg-slate-50 font-medium cursor-pointer text-ellipsis overflow-hidden"
                       >
-                        <option value="">{getTranslatedText('allGrades', language)}</option>
-                        {GRADES.map(g => <option key={g} value={g}>{translateGrade(g, language)}</option>)}
+                        <option key="audit-grade-default" value="">{getTranslatedText('allGrades', language)}</option>
+                        {GRADES.map((g, index) => <option key={`audit-grade-${g}-${index}`} value={g}>{translateGrade(g, language)}</option>)}
                       </select>
-                      {userProfile && userProfile.role === 'moderator' ? (
-                        <div 
-                          className="px-3 py-2 border border-emerald-100 bg-emerald-50/60 rounded-xl text-[11px] text-emerald-800 font-extrabold flex items-center justify-center gap-1.5 overflow-hidden text-ellipsis whitespace-nowrap select-none" 
-                          title={`${language === 'ar' ? 'المادة المخصصة لك للتدقيق' : 'Your audited subject'}`}
-                        >
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
-                          <span>{translateSubject(userProfile.subject || '', language)}</span>
-                        </div>
-                      ) : (
-                        <select
-                          value={selectedSubject}
-                          onChange={(e) => setSelectedSubject(e.target.value)}
-                          className="px-3 py-2 border border-slate-100 rounded-xl text-xs text-slate-600 bg-slate-50 font-medium cursor-pointer text-ellipsis overflow-hidden"
-                        >
-                          <option value="">{getTranslatedText('allSubjects', language)}</option>
-                          {SUBJECTS.map(s => <option key={s} value={s}>{translateSubject(s, language)}</option>)}
-                        </select>
-                      )}
+                      <select
+                        value={selectedSubject}
+                        onChange={(e) => setSelectedSubject(e.target.value)}
+                        className="px-3 py-2 border border-slate-100 rounded-xl text-xs text-slate-600 bg-slate-50 font-medium cursor-pointer text-ellipsis overflow-hidden"
+                      >
+                        <option key="audit-subj-default" value="">
+                          {userProfile?.role === 'moderator' && !isUniversalSubject(userProfile?.subject)
+                            ? `${language === 'ar' ? 'تخصصي: ' : 'My Specialty: '}${translateSubject(userProfile.subject || '', language)}`
+                            : getTranslatedText('allSubjects', language)
+                          }
+                        </option>
+                        {userProfile?.role === 'moderator' && !isUniversalSubject(userProfile?.subject) && (
+                          <option key="audit-subj-all" value="ALL">
+                            {language === 'ar' ? '🌟 استعراض كافة المواد' : '🌟 View All Subjects'}
+                          </option>
+                        )}
+                        {SUBJECTS.map((s, index) => <option key={`audit-subj-${s}-${index}`} value={s}>{translateSubject(s, language)}</option>)}
+                      </select>
                     </div>
 
                     {/* Selected status indicator reset option */}
@@ -3566,7 +3471,7 @@ export default function App() {
                     <div className="bg-white rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 border border-slate-200/50 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                       <div className="space-y-1">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-[9.5px] font-black px-2 py-0.5 rounded leading-none bg-[#ecfdf5] border border-emerald-500/20 text-[#047857] uppercase tracking-wide flex items-center gap-1">
+                          <span className="text-[9.5px] font-black px-2 py-0.5 rounded leading-none bg-[#ecfdf5] border border-emerald-500/20 text-[#047857] uppercase flex items-center gap-1">
                             ✓ {language === 'ar' ? 'معتمد رقمياً ومصادق عليه' : 'Digitally Certified'}
                           </span>
                         </div>
@@ -3586,8 +3491,8 @@ export default function App() {
                           disabled={isGeneratingPDF}
                           className={`px-3.5 sm:px-5 py-2 sm:py-3 text-white font-black text-[11px] sm:text-xs rounded-xl shadow-md hover:shadow-lg transition-all flex items-center gap-2 cursor-pointer ${
                             isGeneratingPDF 
-                              ? 'bg-[#5e1113] opacity-80 cursor-wait' 
-                              : 'bg-[#821315] hover:bg-[#a61c1e]'
+                              ? 'bg-[#06331a] opacity-80 cursor-wait' 
+                              : 'bg-[#0b5e32] hover:bg-[#0a4d29]'
                           }`}
                         >
                           {isGeneratingPDF ? (
@@ -3621,7 +3526,7 @@ export default function App() {
                       {/* Printable Ministry Landscape layout block */}
                       <div 
                         id="printable-approved-form"
-                        className="bg-white border-2 border-slate-350 shadow-xl p-8 text-slate-900 relative select-text font-sans w-full max-w-[1000px] min-h-[1100px] h-auto leading-relaxed mx-auto rounded-3xl pb-12 overflow-hidden"
+                        className="bg-white border-2 border-slate-350 shadow-xl p-8 text-slate-900 relative select-text font-sans w-full max-w-[1000px] min-h-[1100px] h-auto leading-relaxed mx-auto rounded-3xl pb-12"
                         style={{ direction: 'rtl' }}
                       >
                         {formStyles && (
@@ -3730,7 +3635,7 @@ export default function App() {
                                 fontFamily: `'${formStyles.primaryFont}', sans-serif`
                               }}
                             >
-                              {formStyles.watermarkText || 'وزارة التربية والتعليم - وثيقة فحص رسمية'}
+                              {formStyles.watermarkText || 'وزارة التعليم - وثيقة فحص رسمية'}
                             </div>
                           </div>
                         ) : (
@@ -3858,10 +3763,7 @@ export default function App() {
                           </div>
 
                           {/* Row 2: Audited Students Data table */}
-                          <div className="border-2 border-black rounded overflow-hidden bg-white text-right font-sans" dir="rtl">
-                            <div className="bg-[#821315] text-white px-3 py-1.5 text-[15px] font-black text-center font-sans">
-                              {language === 'ar' ? 'العينة العشوائية المستهدفة لفرز الدرجات والتحقق من مطابقات أدوات ومحاور التقويم المستمر والمواصفات الفنية' : 'Assessment Blueprint Consistency Verification'}
-                            </div>
+                          <div className="border-2 border-black rounded overflow-hidden bg-white text-right font-sans mt-4" dir="rtl">
                             <table className="w-full text-[16px] border-collapse text-right leading-normal font-sans" dir="rtl">
                               <thead>
                                 <tr className="bg-[#fcfbee] border-b-2 border-black text-[15px]">
@@ -3893,7 +3795,7 @@ export default function App() {
                                     </tr>
                                   ))
                                 ) : (
-                                  <tr>
+                                  <tr key="approved-students-empty">
                                     <td colSpan={5} className="py-3 text-center text-slate-400 font-medium">{language === 'ar' ? 'لا توجد بيانات طلاب معروضة.' : 'No student audits listed.'}</td>
                                   </tr>
                                 )}
@@ -3923,15 +3825,21 @@ export default function App() {
                                         <td className="py-2.5 px-3 text-slate-700 text-right font-normal border-l-2 border-black">{translateGrade(obs.gradeClass, language)}</td>
                                         <td className="py-2.5 px-3 text-slate-705 text-center font-normal border-l-2 border-black whitespace-normal break-words">{obs.tool}</td>
                                         <td className="py-2.5 px-3 text-center border-l-2 border-black">
-                                          <span className="px-2.5 py-1 bg-emerald-50 text-emerald-800 text-[13px] font-black rounded uppercase leading-none">
-                                            {language === 'ar' ? 'مستوفٍ ومطابق' : 'Approved'}
+                                          
+                                          <span className={`px-2.5 py-1 text-[13px] font-black rounded uppercase leading-none ${
+                                            obs.status === 'غير مطابق' || obs.status === 'Non-conforming' 
+                                              ? 'bg-rose-50 text-rose-800'
+                                              : 'bg-emerald-50 text-emerald-800'
+                                          }`}>
+                                            {obs.status || (language === 'ar' ? 'مستوفٍ ومطابق' : 'Approved')}
                                           </span>
+
                                         </td>
                                         <td className="py-2.5 px-3 text-slate-600 font-normal text-right whitespace-normal break-words leading-relaxed">{obs.notes || (language === 'ar' ? 'الأسئلة والمسافات مطابقة تماماً للمواصفة المعتمدة.' : 'Optimal assessment design.')}</td>
                                       </tr>
                                     ))
                                   ) : (
-                                    <tr>
+                                    <tr key="approved-obs-empty">
                                       <td colSpan={4} className="py-2 text-center text-slate-400">{language === 'ar' ? 'لا توجد ملاحظات تدقيق.' : 'No findings.'}</td>
                                     </tr>
                                   )}
@@ -3952,7 +3860,7 @@ export default function App() {
                                  />
                                )}
                                <div>
-                                 <h5 className="text-[14px] font-black text-[#821315] uppercase tracking-wide leading-none mb-2">{language === 'ar' ? 'اعتماد ومحاذاة التوقيع' : 'Signed Authority'}</h5>
+                                 <h5 className="text-[14px] font-black text-[#821315] uppercase leading-none mb-2">{language === 'ar' ? 'اعتماد ومحاذاة التوقيع' : 'Signed Authority'}</h5>
                                  <p className="text-[12px] text-slate-400 font-mono leading-none">ID: {selectedApprovedForm.id.toUpperCase().substr(0, 10)}</p>
                                </div>
 
@@ -4264,7 +4172,7 @@ export default function App() {
                       {/* Form Header */}
                       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 border-b border-slate-100 pb-4 sm:pb-5">
                         <div className="space-y-1 sm:space-y-1.5 text-right sm:text-right rtl:ml-auto">
-                          <span className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 bg-[#821315]/10 text-[#821315] rounded-full text-[10px] sm:text-[10.5px] font-black tracking-wide uppercase">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 bg-[#821315]/10 text-[#821315] rounded-full text-[10px] sm:text-[10.5px] font-black uppercase">
                             🖋️ {language === 'ar' ? 'النموذج الرسمي المعتمد للبوابة التعليمية' : 'Official Portal Auditing Form'}
                           </span>
                           <h3 className="text-base sm:text-lg font-bold font-heading text-[#051C3F]">
@@ -4322,8 +4230,8 @@ export default function App() {
                                 disabled={isGeneratingPDF}
                                 className={`w-full sm:w-auto px-4 sm:px-5 py-2.5 sm:py-4 text-white font-black text-xs rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
                                   isGeneratingPDF 
-                                    ? 'bg-[#5e1113] opacity-80 cursor-wait' 
-                                    : 'bg-[#821315] hover:bg-[#a61c1e]'
+                                    ? 'bg-[#06331a] opacity-80 cursor-wait' 
+                                    : 'bg-[#0b5e32] hover:bg-[#0a4d29]'
                                 }`}
                               >
                                 {isGeneratingPDF ? (
@@ -4472,7 +4380,7 @@ export default function App() {
                         {/* Table 1: Student Samples editing (Rows 1 to 6) */}
                         <div className="space-y-2 pt-3">
                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block font-sans">
-                            {language === 'ar' ? '1. جدول عينة درجات ومطابقة الطلاب الستة (2 ممتاز، 2 متوسط، 2 متدني)' : '1. Six-Student Sample Allocation Table'}
+                            {language === 'ar' ? '1. جدول عينة درجات ومطابقة الطلاب الستة - 2 ممتاز، 2 متوسط، 2 متدني' : '1. Six-Student Sample Allocation Table'}
                           </label>
                           <div className="overflow-x-auto rounded-xl border-2 border-black bg-white shadow-xs">
                             <table className="w-full text-right text-xs border-collapse">
@@ -4482,9 +4390,14 @@ export default function App() {
                                   <th className="py-2.5 px-3 border-l-2 border-black">{language === 'ar' ? 'اسم الطالب/ة' : 'Student Name'}</th>
                                   <th className="py-2.5 px-3 border-l-2 border-black w-16 text-center">{language === 'ar' ? 'الصف' : 'Class'}</th>
                                   <th className="py-2.5 px-3 border-l-2 border-black w-32">{language === 'ar' ? 'أداة التقييم' : 'Assessment Tool'}</th>
-                                  <th className="py-2.5 px-3 border-l-2 border-black w-20 text-center">{language === 'ar' ? 'درجة قبل' : 'Before'}</th>
-                                  <th className="py-2.5 px-3 border-l-2 border-black w-20 text-center">{language === 'ar' ? 'درجة بعد' : 'After'}</th>
-                                  <th className="py-2.5 px-3">{language === 'ar' ? 'سبب التعديل والقرار الفني' : 'Reason for Adjustment'}</th>
+                                  <th className="py-1 px-1 border-l-2 border-black w-28 text-center bg-slate-100/70" colSpan={2}>
+                                    <div className="flex items-center justify-center w-full font-black text-[13px] text-slate-800 py-0.5">{language === 'ar' ? 'الدرجة' : 'Grade'}</div>
+                                    <div className="grid grid-cols-2 text-[11px] border-t border-black/40 pt-0.5 font-black divide-x divide-x-reverse divide-black/40 bg-white/70">
+                                      <span className="text-slate-900 px-1 font-black">{language === 'ar' ? 'قبل' : 'Before'}</span>
+                                      <span className="text-slate-900 px-1 font-black">{language === 'ar' ? 'بعد' : 'After'}</span>
+                                    </div>
+                                  </th>
+                                  <th className="py-2.5 px-3 text-center font-black">{language === 'ar' ? 'سبب التعديل' : 'Modification Reason'}</th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y-2 divide-black">
@@ -4731,6 +4644,7 @@ export default function App() {
                               className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs bg-white text-slate-800 font-semibold"
                             />
                           </div>
+                          
                           <div className="space-y-1">
                             <label className="text-[10px] font-bold text-[#821315] mr-1 block">{language === 'ar' ? 'اسم مدير المدرسة المصادق على الاستمارة' : 'School Principal Approved'}</label>
                             <input
@@ -4742,6 +4656,44 @@ export default function App() {
                           </div>
                         </div>
 
+                        {/* Conformance Status Selection */}
+                        <div className="pt-4 border-t border-slate-200">
+                          <label className="block text-[11px] font-black text-slate-600 mb-2">
+                            {language === 'ar' ? 'قرار الفاحص وحالة المطابقة:' : 'Examiner Conformance Decision:'} <span className="text-red-500 font-bold">*</span>
+                          </label>
+                          <div className="mb-3 p-2 bg-slate-50 border border-slate-200 rounded-lg text-[10px] text-slate-500 flex gap-2">
+                            <span className="shrink-0 text-slate-400">💡</span>
+                            <span>{language === 'ar' ? 'ملاحظة: سواء كانت الاستمارة مطابقة أم لا. يوقع الفاحص ثم يوقع المعلم ثم يوقع المدير.' : 'Note: Whether the form is conforming or not, the Examiner signs, then the Teacher signs, then the Principal signs.'}</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <button
+                              type="button"
+                              onClick={() => setAuditConformanceStatus('conforming')}
+                              className={`py-2.5 px-3 rounded-xl border flex items-center justify-center gap-2 transition-all ${
+                                auditConformanceStatus === 'conforming'
+                                  ? 'border-emerald-500 bg-emerald-50/20 text-emerald-950 font-black ring-2 ring-emerald-500/10'
+                                  : 'border-slate-200 bg-slate-50/50 hover:bg-slate-50 text-slate-700 font-semibold'
+                              }`}
+                            >
+                              <span className="text-lg">🟢</span>
+                              <span className="text-xs">{language === 'ar' ? 'مطابقة المعايير' : 'Conforming'}</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setAuditConformanceStatus('non-conforming')}
+                              className={`py-2.5 px-3 rounded-xl border flex items-center justify-center gap-2 transition-all ${
+                                auditConformanceStatus === 'non-conforming'
+                                  ? 'border-rose-500 bg-rose-50/20 text-rose-950 font-black ring-2 ring-rose-500/10'
+                                  : 'border-slate-200 bg-slate-50/50 hover:bg-slate-50 text-slate-700 font-semibold'
+                              }`}
+                            >
+                              <span className="text-lg">🔴</span>
+                              <span className="text-xs">{language === 'ar' ? 'غير مطابقة المعايير' : 'Non-conforming'}</span>
+                            </button>
+                          </div>
+                        </div>
+
+
                       </div>
 
                       {/* --- HIGH FIDELITY LANDSCAPE INTERACTIVE LIVE PREVIEW RENDER --- */}
@@ -4751,10 +4703,10 @@ export default function App() {
                         </h4>
                         
                         {/* Live paper container mimics actual printed A4 aspect ratio and styles */}
-                        <div className="overflow-x-auto rounded-3xl border border-slate-300 bg-slate-900/5 p-4 sm:p-6 shadow-inner flex justify-center">
+                        <div className="overflow-x-auto rounded-3xl border border-slate-300 bg-slate-900/5 p-4 sm:p-6 shadow-inner block text-center">
                           <div 
                             id="ministry-audit-form-preview"
-                            className="bg-white border-2 border-slate-350 shadow-xl p-6 sm:p-8 text-[#000] relative select-none font-sans w-full max-w-[950px] aspect-[1.414/1] leading-normal"
+                            className="bg-white border-2 border-slate-350 shadow-xl p-6 sm:p-8 text-[#000] relative select-none font-sans w-[950px] min-w-[950px] shrink-0 mx-auto aspect-[1.414/1] leading-normal text-right"
                             style={{ direction: 'rtl' }}
                           >
                             {/* Inner elements */}
@@ -4893,14 +4845,14 @@ export default function App() {
                                           <th className="py-1 px-2 border-l border-[#821315]/10 text-right w-36">{language === 'ar' ? 'اسم الطالب/ة' : 'Student Name'}</th>
                                           <th className="py-1 px-1.5 border-l border-[#821315]/10 text-center w-12">الصف</th>
                                           <th className="py-1 px-2 border-l border-[#821315]/10 w-18">الأداة</th>
-                                          <th className="py-1 px-1 border-l border-[#821315]/10 text-center w-16 bg-[#821315]/5 pb-1.5" colSpan={2}>
-                                            <div className="text-center font-extrabold text-[12px] text-[#821315] tracking-wide mb-0.5 mt-0.5">{language === 'ar' ? 'الدرجـــة' : 'Grade'}</div>
-                                            <div className="grid grid-cols-2 text-[10px] border-t border-dashed border-[#821315]/30 pt-1 font-black">
-                                              <span className="text-[#821315]">{language === 'ar' ? 'قبْل' : 'Before'}</span>
-                                              <span className="text-[#821315]">{language === 'ar' ? 'بعْد' : 'After'}</span>
+                                          <th className="py-1 px-1 border-l border-[#821315]/20 text-center w-24 bg-[#821315]/10 align-middle" colSpan={2}>
+                                            <div className="flex items-center justify-center w-full font-black text-[12px] text-[#821315] py-0.5">{language === 'ar' ? 'الدرجة' : 'Grade'}</div>
+                                            <div className="grid grid-cols-2 text-[10.5px] border-t-2 border-[#821315]/30 pt-0.5 font-black divide-x divide-x-reverse divide-[#821315]/30 bg-white/60">
+                                              <span className="text-[#821315] px-0.5 font-black">{language === 'ar' ? 'قبل' : 'Before'}</span>
+                                              <span className="text-[#821315] px-0.5 font-black">{language === 'ar' ? 'بعد' : 'After'}</span>
                                             </div>
                                           </th>
-                                          <th className="py-1 px-2 text-right">{language === 'ar' ? 'سبب التعديل والقرار الفني للفرز والمطابقة بوزارة التعليم' : 'Modification Reason'}</th>
+                                          <th className="py-1 px-2 text-center border-l border-[#821315]/20 font-black text-[11px] text-[#821315]">{language === 'ar' ? 'سبب التعديل' : 'Modification Reason'}</th>
                                         </tr>
                                       </thead>
                                       <tbody className="divide-y divide-[#821315]/10 text-slate-705">
@@ -4910,8 +4862,8 @@ export default function App() {
                                             <td className="py-1.5 px-2 border-l border-[#821315]/10 font-normal whitespace-normal break-words text-slate-700">{s.name || '---'}</td>
                                             <td className="py-1.5 px-1.5 border-l border-[#821315]/10 text-center font-normal font-mono text-slate-600">{s.gradeClass}</td>
                                             <td className="py-1.5 px-2 border-l border-[#821315]/10 whitespace-normal break-words font-normal text-slate-600">{s.tool}</td>
-                                            <td className="py-1.5 px-0.5 border-l border-dashed border-[#821315]/10 text-center font-mono font-black text-black text-[9px] bg-slate-50">{s.scoreBefore}</td>
-                                            <td className="py-1.5 px-0.5 border-l border-[#821315]/10 text-center font-mono font-black text-red-700 text-[9.5px] bg-red-50">{s.scoreAfter}</td>
+                                            <td className="py-1.5 px-0.5 border-l border-dashed border-[#821315]/10 text-center font-mono font-black text-black text-[9px] bg-slate-50 w-12">{s.scoreBefore}</td>
+                                            <td className="py-1.5 px-0.5 border-l border-[#821315]/10 text-center font-mono font-black text-red-700 text-[9.5px] bg-red-50 w-12">{s.scoreAfter}</td>
                                             <td className="py-1.5 px-2 text-center text-slate-800 font-bold font-sans text-[10px]">
                                               {['1', '2', '3', '4', '5', '6'].includes(s.reason?.trim() || '') ? (
                                                 <span className="font-mono text-[#821315] font-black text-xs bg-red-50 px-1.5 py-0.5 rounded">{s.reason}</span>
@@ -4928,7 +4880,7 @@ export default function App() {
                                   {/* Left col-span-7: Technical Observations */}
                                   <div className="col-span-7 border border-[#821315] rounded overflow-hidden bg-white flex flex-col justify-between">
                                     <div className="bg-[#821315]/5 text-[#821315] px-2 py-1 text-[8.5px] font-black text-center border-b border-[#821315]">
-                                      {language === 'ar' ? 'الملاحظات الفنية على أدوات التقويم المستمر (التقرير المعتمد للجنة)' : 'Technical Observations / Audit Comments'}
+                                      {language === 'ar' ? 'الملاحظات الفنية على أدوات التقويم المستمر - التقرير المعتمد للجنة' : 'Technical Observations / Audit Comments'}
                                     </div>
                                     <table className="w-full text-right text-[8px] border-collapse leading-tight flex-1">
                                       <thead>
@@ -4943,7 +4895,7 @@ export default function App() {
                                           <tr key={`audit-view-obs-${obs.id || idx}-${idx}`} className="hover:bg-slate-50/20">
                                             <td className="py-1.5 px-2 border-l border-[#821315]/10 text-center font-normal bg-[#821315]/5 text-[#831215]">{obs.gradeClass}</td>
                                             <td className="py-1.5 px-2 border-l border-[#821315]/10 font-normal whitespace-normal break-words text-slate-700">{obs.tool}</td>
-                                            <td className="py-1.5 px-2 text-slate-950 font-black text-center whitespace-normal break-words leading-relaxed text-[11px]">{language === 'ar' ? `ملاحظة رقم (${obs.id})` : `Observation No. (${obs.id})`}</td>
+                                            <td className="py-1.5 px-2 text-slate-950 font-black text-center whitespace-normal break-words leading-relaxed text-[11px]">{language === 'ar' ? `ملاحظة رقم ${obs.id}` : `Observation No. (${obs.id})`}</td>
                                           </tr>
                                         ))}
                                       </tbody>
@@ -4955,7 +4907,7 @@ export default function App() {
                               </div>
 
                               {/* Beautiful Bottom Footer Bar with Suggested Program and sequential signatures */}
-                              <div className="border border-[#821315] rounded overflow-hidden bg-white">
+                              <div className="border border-[#821315] rounded bg-white">
                                 <div className="flex w-full text-[8.5px]" dir="rtl" style={{ display: 'flex', flexDirection: 'row', width: '100%' }}>
                                   
                                   {/* Professional development space */}
@@ -4979,11 +4931,11 @@ export default function App() {
                                   </div>
 
                                   {/* 3. Principal and Stamp */}
-                                  <div className="p-2 border-r border-[#821315]/80 text-right bg-white" style={{ width: '21%', flex: '0 0 21%', boxSizing: 'border-box' }}>
+                                  <div className="p-2 border-r border-[#821315]/80 text-right" style={{ width: '21%', flex: '0 0 21%', boxSizing: 'border-box' }}>
                                     <div className="font-extrabold text-[#821315] block text-[8px] w-full">3. مدير المدرسة والختم:</div>
                                     <div className="text-slate-800 font-bold text-[8.5px] mt-0.5 block w-full">{auditPrincipalName || 'أ. محمد بن راشد الجنيبي'}</div>
                                     <div className="text-[7px] text-slate-400 mt-1 block w-full">
-                                      <span className="font-mono text-[#821315] font-extrabold tracking-wide block w-full" style={{ direction: 'ltr' }}>
+                                      <span className="font-mono text-[#821315] font-extrabold block w-full" style={{ direction: 'ltr' }}>
                                         OM-SIG-1XCT85
                                       </span>
                                     </div>
@@ -4994,8 +4946,9 @@ export default function App() {
 
                             </div>
                           </div>
-                        </div>
-                      </div>
+                          </div>
+                          </div>
+                      
 
                     </div>
 
@@ -5206,7 +5159,13 @@ export default function App() {
       {/* --- MOE Profile Registration Onboarding Modal (Firebase Live First-Login only) --- */}
       <AnimatePresence>
         {showOnboarding && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+          <motion.div 
+            key="app-onboarding-modal"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in"
+          >
             <motion.div 
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -5309,11 +5268,11 @@ export default function App() {
                         }}
                         className="w-full px-3 py-2 border border-slate-205 rounded-xl text-xs text-slate-805 bg-white focus:outline-none font-bold cursor-pointer"
                       >
-                        <option value="">{language === 'ar' ? '-- اختر الولاية --' : '-- Select Wilayat --'}</option>
+                        <option key="onboard-wilaya-default" value="">{language === 'ar' ? '-- اختر الولاية --' : '-- Select Wilayat --'}</option>
                         {OMAN_WUSTA_SCHOOLS.map(w => (
-                          <option key={w.id} value={w.id}>{language === 'ar' ? w.nameAr : w.nameEn}</option>
+                          <option key={`onboard-wilaya-opt-${w.id}`} value={w.id}>{language === 'ar' ? w.nameAr : w.nameEn}</option>
                         ))}
-                        <option value="custom">{language === 'ar' ? '✍️ كتابة يدوية أخرى' : '✍️ Other/Custom School'}</option>
+                        <option key="onboard-wilaya-custom" value="custom">{language === 'ar' ? '✍️ كتابة يدوية أخرى' : '✍️ Other/Custom School'}</option>
                       </select>
                     </div>
 
@@ -5328,8 +5287,8 @@ export default function App() {
                           onChange={(e) => setOnboardSchoolName(e.target.value)}
                            className="w-full px-3 py-2 border border-slate-205 rounded-xl text-xs text-indigo-950 bg-white focus:outline-none font-black cursor-pointer"
                         >
-                          {OMAN_WUSTA_SCHOOLS.find(w => w.id === onboardSchoolWilaya)?.schools.map(s => (
-                            <option key={s.nameAr} value={s.nameAr}>{language === 'ar' ? s.nameAr : s.nameEn}</option>
+                          {OMAN_WUSTA_SCHOOLS.find(w => w.id === onboardSchoolWilaya)?.schools.map((s, index) => (
+                            <option key={`onboard-sch-${s.nameAr}-${index}`} value={s.nameAr}>{language === 'ar' ? s.nameAr : s.nameEn}</option>
                           ))}
                         </select>
                       ) : (
@@ -5356,7 +5315,7 @@ export default function App() {
                       onChange={(e) => setOnboardSubject(e.target.value)}
                       className="w-full px-4 py-3 border border-slate-205 rounded-xl text-xs text-slate-800 bg-white focus:outline-none focus:border-indigo-650 font-medium cursor-pointer"
                     >
-                      {SUBJECTS.map(s => <option key={s} value={s}>{translateSubject(s, language)}</option>)}
+                      {SUBJECTS.map((s, index) => <option key={`onboard-subj-${s}-${index}`} value={s}>{translateSubject(s, language)}</option>)}
                     </select>
                     <p className="text-[10px] text-amber-600 font-semibold leading-snug">
                       {language === 'ar' 
@@ -5379,7 +5338,7 @@ export default function App() {
                 </div>
               </form>
             </motion.div>
-          </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
@@ -5546,18 +5505,26 @@ export default function App() {
                 <table className="w-full text-right text-[8.5px] border-collapse leading-tight flex-1">
                   <thead>
                     <tr className="bg-slate-100 text-[#821315] font-black text-[8.5px] border-b border-[#000]">
-                      <th className="py-1 px-1 border-l border-slate-300 text-center w-8">م</th>
-                      <th className="py-1 px-2 border-l border-slate-300 text-right w-36">{language === 'ar' ? 'اسم الطالب/ة' : 'Student Name'}</th>
-                      <th className="py-1 px-1.5 border-l border-slate-300 text-center w-12">الصف</th>
-                      <th className="py-1 px-2 border-l border-slate-300 w-18">الأداة</th>
-                      <th className="py-1 px-1 border-l border-slate-300 text-center w-16 bg-slate-200 pb-1.5" colSpan={2}>
-                        <div className="text-center font-black text-[12px] text-black tracking-wide mb-0.5 mt-0.5">{language === 'ar' ? 'الدرجـــة' : 'Grade'}</div>
-                        <div className="grid grid-cols-2 text-[10.5px] border-t border-dashed border-slate-400 pt-0.5 font-black">
-                          <span className="text-black">{language === 'ar' ? 'قبْل' : 'Before'}</span>
-                          <span className="text-black">{language === 'ar' ? 'بعْد' : 'After'}</span>
+                      <th className="py-1 px-1 border-l border-slate-300 text-center w-8 align-middle">م</th>
+                      <th className="py-1 px-2 border-l border-slate-300 text-right w-36 align-middle">{language === 'ar' ? 'اسم الطالب/ة' : 'Student Name'}</th>
+                      <th className="py-1 px-1.5 border-l border-slate-300 text-center w-12 align-middle">الصف</th>
+                      <th className="py-1 px-2 border-l border-slate-300 w-18 align-middle">الأداة</th>
+                      <th className="p-0 border-l border-slate-300 text-center w-24 align-top" colSpan={2}>
+                        <div className="flex flex-col w-full h-full bg-slate-200">
+                          <div className="flex items-center justify-center w-full font-black text-[12px] text-black py-0.5 border-b border-slate-300">
+                            {language === 'ar' ? 'الدرجة' : 'Grade'}
+                          </div>
+                          <div className="grid grid-cols-2 text-[10px] font-black h-full">
+                            <div className="flex items-center justify-center border-l border-slate-300 px-1 py-0.5">
+                              {language === 'ar' ? 'قبل' : 'Before'}
+                            </div>
+                            <div className="flex items-center justify-center px-1 py-0.5">
+                              {language === 'ar' ? 'بعد' : 'After'}
+                            </div>
+                          </div>
                         </div>
                       </th>
-                      <th className="py-1 px-2 text-right border-l border-slate-300">{language === 'ar' ? 'سبب التعديل والقرار الفني للفرز والمطابقة بوزارة التعليم' : 'Modification Reason'}</th>
+                      <th className="py-1 px-2 text-center border-l border-slate-300 font-black text-[11px] text-[#821315] align-middle">{language === 'ar' ? 'سبب التعديل' : 'Modification Reason'}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#000] text-slate-900">
@@ -5567,8 +5534,8 @@ export default function App() {
                         <td className="py-1 px-2 border-l border-slate-300 font-normal whitespace-normal break-words text-slate-700">{s.name || '---'}</td>
                         <td className="py-1 px-1.5 border-l border-slate-300 text-center font-normal font-mono text-slate-600">{s.gradeClass}</td>
                         <td className="py-1 px-2 border-l border-slate-300 whitespace-normal break-words font-normal text-slate-700">{s.tool}</td>
-                        <td className="py-1 px-0.5 border-l border-dashed border-slate-300 text-center font-mono font-black text-black text-[9px] bg-slate-50">{s.scoreBefore}</td>
-                        <td className="py-1 px-0.5 border-l border-slate-300 text-center font-mono font-black text-red-900 text-[9.5px] bg-red-100/30">{s.scoreAfter}</td>
+                        <td className="py-1 px-0.5 border-l border-dashed border-slate-300 text-center font-mono font-black text-black text-[9px] bg-slate-50 w-12">{s.scoreBefore}</td>
+                        <td className="py-1 px-0.5 border-l border-slate-300 text-center font-mono font-black text-red-900 text-[9.5px] bg-red-100/30 w-12">{s.scoreAfter}</td>
                         <td className="py-1 px-2 text-center border-l border-slate-300 font-bold whitespace-normal break-words text-[9.5px] text-slate-800">
                           {['1', '2', '3', '4', '5', '6'].includes(s.reason?.trim() || '') ? (
                             <span className="font-mono text-[#821315] font-black text-[11.5px] bg-slate-100 px-1 py-0.5 rounded">{s.reason}</span>
@@ -5585,7 +5552,7 @@ export default function App() {
               {/* Left col-span-7: Technical Observations */}
               <div className="col-span-7 border border-slate-400 rounded overflow-hidden flex flex-col justify-between">
                 <div className="bg-slate-100 text-[#821315] px-2 py-0.5 text-[8.5px] font-black text-center border-b border-slate-300">
-                  {language === 'ar' ? 'الملاحظات الفنية على أدوات التقويم المستمر (التقرير المعتمد للجنة الوزارية)' : 'Technical Observations / Audit Comments'}
+                  {language === 'ar' ? 'الملاحظات الفنية على أدوات التقويم المستمر - التقرير المعتمد للجنة الوزارية' : 'Technical Observations / Audit Comments'}
                 </div>
                 <table className="w-full text-right text-[8.5px] border-collapse leading-tight flex-1">
                   <thead>
@@ -5600,7 +5567,7 @@ export default function App() {
                       <tr key={`audit-print-obs-${obs.id || idx}-${idx}`}>
                         <td className="py-1 px-2 border-l border-slate-300 text-center font-normal bg-slate-50 text-[#831215]">{obs.gradeClass}</td>
                         <td className="py-1 px-2 border-l border-slate-300 font-normal whitespace-normal break-words text-slate-700">{obs.tool}</td>
-                        <td className="py-1 px-2 text-slate-950 font-black text-center whitespace-normal break-words leading-relaxed text-[11px]">{language === 'ar' ? `ملاحظة رقم (${obs.id})` : `Observation No. (${obs.id})`}</td>
+                        <td className="py-1 px-2 text-slate-950 font-black text-center whitespace-normal break-words leading-relaxed text-[11px]">{language === 'ar' ? `ملاحظة رقم ${obs.id}` : `Observation No. (${obs.id})`}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -5612,7 +5579,7 @@ export default function App() {
           </div>
 
           {/* Beautiful Bottom Footer Bar */}
-          <div className="border border-slate-400 rounded overflow-hidden bg-white mt-3">
+          <div className="border border-slate-400 rounded bg-white mt-3">
             <div className="flex w-full text-[9px]" dir="rtl" style={{ display: 'flex', flexDirection: 'row', width: '100%' }}>
               
               <div className="p-1.5 px-2.5 space-y-0.5 bg-white text-right" style={{ width: '50%', flex: '0 0 50%', boxSizing: 'border-box' }}>
@@ -5621,16 +5588,18 @@ export default function App() {
               </div>
 
               <div className="p-1.5 px-2.5 space-y-0.5 border-r border-[#821315]/80 text-right" style={{ width: '18%', flex: '0 0 18%', boxSizing: 'border-box' }}>
+                
                 <span className="font-extrabold text-[#821315] block">مشرف فحص ومطابقة المادة:</span>
                 <p className="text-slate-900 font-black text-[9px]">{auditExaminerName}</p>
                 <div className="pt-1.5 text-[7.5px] text-slate-400">التوقيع الرسمي: ____________________</div>
+
               </div>
 
-              <div className="p-1.5 px-2.5 border-r border-[#821315]/80 text-right bg-white" style={{ width: '32%', flex: '0 0 32%', boxSizing: 'border-box' }}>
+              <div className="p-1.5 px-2.5 border-r border-[#821315]/80 text-right" style={{ width: '32%', flex: '0 0 32%', boxSizing: 'border-box' }}>
                 <div className="font-extrabold text-[#821315] block text-[8px] w-full">مدير المدرسة المصادق:</div>
                 <div className="text-slate-800 font-bold text-[8px] mt-0.5 block w-full">{auditPrincipalName || 'أ. محمد بن راشد الجنيبي'}</div>
                 <div className="text-[7px] text-slate-400 mt-1 block w-full">
-                  <span className="font-mono text-[#821315] font-extrabold tracking-wide block w-full" style={{ direction: 'ltr' }}>
+                  <span className="font-mono text-[#821315] font-extrabold block w-full" style={{ direction: 'ltr' }}>
                     OM-SIG-1XCT85
                   </span>
                 </div>
@@ -5645,7 +5614,13 @@ export default function App() {
       {/* --- IFRAME PRINT MODE EXPOSITION MODAL --- */}
       <AnimatePresence>
         {showIframePrintHelp && (
-          <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in no-print">
+          <motion.div 
+            key="app-iframe-print-modal"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in no-print"
+          >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -5661,7 +5636,7 @@ export default function App() {
               </button>
 
               <div className="space-y-2 text-right">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#821315]/10 text-[#821315] rounded-full text-[10.5px] font-black tracking-wide uppercase">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#821315]/10 text-[#821315] rounded-full text-[10.5px] font-black uppercase">
                   🖨️ {language === 'ar' ? 'دليل الطباعة والـ PDF المعتمد' : 'Printing & PDF Guide'}
                 </span>
                 <h3 className="text-lg font-black font-heading text-[#051C3F]">
@@ -5730,14 +5705,14 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setShowIframePrintHelp(false)}
-                  className="w-full py-3 bg-[#821315] hover:bg-[#a61c1e] text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow-sm text-center"
+                  className="w-full py-3 bg-[#0b5e32] hover:bg-[#0a4d29] text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow-sm text-center"
                 >
                   {language === 'ar' ? 'فهمت التعليمات، شكراً لك' : 'I understand, thank you'}
                 </button>
               </div>
 
             </motion.div>
-          </div>
+          </motion.div>
         )}
       </AnimatePresence>
 

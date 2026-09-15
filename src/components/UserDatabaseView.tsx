@@ -26,6 +26,7 @@ import { OMAN_WUSTA_SCHOOLS } from '../data/schoolsData';
 
 interface UserDatabaseViewProps {
   language: Language;
+  subjects: string[];
 }
 
 const CONST_GRADES = [
@@ -34,14 +35,9 @@ const CONST_GRADES = [
   'Grade 11', 'Grade 12'
 ];
 
-const CONST_SUBJECTS = [
-  'Arabic Language', 'English Language', 'Mathematics', 
-  'Science', 'Physics', 'Chemistry', 'Biology', 
-  'Islamic Studies', 'Social Studies', 'Information Technology',
-  'Applied Sciences', 'Individual Skills'
-];
 
-export function UserDatabaseView({ language }: UserDatabaseViewProps) {
+
+export function UserDatabaseView({ language, subjects }: UserDatabaseViewProps) {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -388,12 +384,12 @@ export function UserDatabaseView({ language }: UserDatabaseViewProps) {
               onChange={(e) => setSubjectFilter(e.target.value)}
               className="px-3 py-1.5 text-xs font-bold border border-slate-200 rounded-xl bg-slate-50 text-slate-700 focus:outline-none focus:border-[#051C3F] cursor-pointer"
             >
-              <option value="all">{language === 'ar' ? 'جميع المواد' : 'All Subjects'}</option>
+              <option key="user-filter-all" value="all">{language === 'ar' ? 'جميع المواد' : 'All Subjects'}</option>
               {roleFilter === 'مدقق' && (
-                <option value="All Subjects">{language === 'ar' ? '🌟 مدقق شامل (كافة المواد)' : '🌟 Universal (All Subjects)'}</option>
+                <option key="user-filter-universal" value="All Subjects">{language === 'ar' ? '🌟 مدقق شامل (كافة المواد)' : '🌟 Universal (All Subjects)'}</option>
               )}
-              {CONST_SUBJECTS.map(s => (
-                <option key={s} value={s}>{translateSubject(s, language)}</option>
+              {subjects.map((s, index) => (
+                <option key={`user-filter-subj-${s}-${index}`} value={s}>{translateSubject(s, language)}</option>
               ))}
             </select>
           )}
@@ -438,14 +434,14 @@ export function UserDatabaseView({ language }: UserDatabaseViewProps) {
           </thead>
           <tbody>
             {loading ? (
-              <tr>
+              <tr key="user-db-loading">
                 <td colSpan={9} className="text-center py-16 text-slate-400 font-bold">
                   <div className="w-8 h-8 rounded-full border-2 border-slate-200 border-t-[#051C3F] animate-spin mx-auto mb-3"></div>
                   <span>{language === 'ar' ? 'جاري قراءة وتصنيف بيانات الكوادر...' : 'Retrieving Omani system directory records...'}</span>
                 </td>
               </tr>
             ) : filteredUsers.length === 0 ? (
-              <tr>
+              <tr key="user-db-empty">
                 <td colSpan={9} className="text-center py-14 text-slate-400 font-bold">
                   {language === 'ar' ? 'لم يتم العثور على أي كادر مطابق للشروط المحددة.' : 'No active educational staff found matching criteria.'}
                 </td>
@@ -796,12 +792,12 @@ export function UserDatabaseView({ language }: UserDatabaseViewProps) {
                     className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-[#051C3F] bg-white font-bold cursor-pointer shadow-xs"
                   >
                     {formJobTitle === 'مدقق' && (
-                      <option value="All Subjects">
+                      <option key="user-edit-sub-all-subjects" value="All Subjects">
                         {language === 'ar' ? '🌟 جميع المواد (مدقق شامل لكافة التخصصات)' : '🌟 All Subjects (Universal Auditor)'}
                       </option>
                     )}
-                    {CONST_SUBJECTS.map(sub => (
-                      <option key={sub} value={sub}>{translateSubject(sub, language)}</option>
+                    {subjects.map((sub, index) => (
+                      <option key={`user-edit-sub-${sub}-${index}`} value={sub}>{translateSubject(sub, language)}</option>
                     ))}
                   </select>
                   <p className="text-[10.5px] text-slate-500 font-sans leading-relaxed">
@@ -905,11 +901,11 @@ export function UserDatabaseView({ language }: UserDatabaseViewProps) {
                         }}
                         className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-xs text-slate-850 bg-white focus:outline-none focus:border-[#051C3F] font-bold"
                       >
-                        <option value="">{language === 'ar' ? '-- اختر الولاية --' : '-- Choose Wilayat --'}</option>
+                        <option key="user-wilaya-default" value="">{language === 'ar' ? '-- اختر الولاية --' : '-- Choose Wilayat --'}</option>
                         {OMAN_WUSTA_SCHOOLS.map(w => (
-                          <option key={w.id} value={w.id}>{language === 'ar' ? w.nameAr : w.nameEn}</option>
+                          <option key={`user-wilaya-opt-${w.id}`} value={w.id}>{language === 'ar' ? w.nameAr : w.nameEn}</option>
                         ))}
-                        <option value="custom">{language === 'ar' ? '✍️ كتابة يدوية' : '✍️ Custom Entry'}</option>
+                        <option key="user-wilaya-custom" value="custom">{language === 'ar' ? '✍️ كتابة يدوية' : '✍️ Custom Entry'}</option>
                       </select>
                     </div>
 
@@ -925,8 +921,8 @@ export function UserDatabaseView({ language }: UserDatabaseViewProps) {
                           onChange={(e) => setFormSchool(e.target.value)}
                           className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-xs text-slate-855 bg-white focus:outline-none focus:border-[#051C3F] font-black text-[#051C3F]"
                         >
-                          {OMAN_WUSTA_SCHOOLS.find(w => w.id === schoolWilaya)?.schools.map(s => (
-                            <option key={s.nameAr} value={s.nameAr}>{language === 'ar' ? s.nameAr : s.nameEn}</option>
+                          {OMAN_WUSTA_SCHOOLS.find(w => w.id === schoolWilaya)?.schools.map((s, index) => (
+                            <option key={`user-sch-${s.nameAr}-${index}`} value={s.nameAr}>{language === 'ar' ? s.nameAr : s.nameEn}</option>
                           ))}
                         </select>
                       ) : (

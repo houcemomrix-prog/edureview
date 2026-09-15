@@ -331,9 +331,9 @@ export function ResultsView({ assessments, language, userProfile }: ResultsViewP
                         onChange={(e) => setTargetSchoolId(e.target.value)}
                         className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-xs font-bold text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-emerald-500 cursor-pointer appearance-none shadow-xs"
                       >
-                        <option value="">{isRtl ? '-- اختر مدرسة من مدارس السلطنة --' : '-- Select School --'}</option>
-                        {schools.map((sch) => (
-                          <option key={sch.id} value={sch.id}>
+                        <option key="results-sch-default" value="">{isRtl ? '-- اختر مدرسة من مدارس السلطنة --' : '-- Select School --'}</option>
+                        {schools.map((sch, index) => (
+                          <option key={`sch-opt-${sch.id || index}-${index}`} value={sch.id}>
                             🏢 {isRtl ? sch.nameAr : sch.nameEn} ({isRtl ? sch.wilayaAr : sch.wilayaEn})
                           </option>
                         ))}
@@ -511,9 +511,9 @@ export function ResultsView({ assessments, language, userProfile }: ResultsViewP
                   </div>
                 ) : (
                   <div className="space-y-3.5 max-h-[580px] overflow-y-auto pr-1">
-                    {reports.map((rep) => (
+                    {reports.map((rep, index) => (
                       <div 
-                        key={rep.id} 
+                        key={`rep-row-${rep.id || index}-${index}`} 
                         className="p-4 bg-slate-50/40 hover:bg-slate-50/90 border border-slate-250/25 rounded-2xl flex items-center justify-between gap-4 transition-all"
                       >
                         <div 
@@ -654,9 +654,9 @@ export function ResultsView({ assessments, language, userProfile }: ResultsViewP
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {reports.map((rep) => (
+                    {reports.map((rep, index) => (
                       <div 
-                        key={rep.id} 
+                        key={`rep-card-${rep.id || index}-${index}`} 
                         className="bg-[#0B1E40]/5 hover:bg-[#0B1E40]/10 border border-slate-100/85 p-5 rounded-3xl flex flex-col justify-between space-y-4 hover:shadow-xs transition-all relative overflow-hidden group"
                       >
                         {/* Shading design overlay */}

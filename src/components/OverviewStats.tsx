@@ -115,7 +115,7 @@ export function OverviewStats({
 
         return (
           <button
-            key={i}
+            key={`overview-stat-${card.status || i}-${i}`}
             type="button"
             disabled={!isClickable}
             onClick={() => onStatusClick?.(card.status)}

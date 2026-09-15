@@ -36,7 +36,7 @@ export function SettingsView({ userProfile, language, onUpdateSubject, sandboxAc
             <div>
               <span className="text-[10px] font-extrabold text-[#748296] uppercase tracking-wider block mb-1">{language === 'ar' ? 'جهة الانتساب الأكاديمي' : 'Institution representation'}</span>
               <p className="text-xs font-bold text-slate-800 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                {userProfile.role === 'school' ? (language === 'ar' ? 'مدرسة العذيبة الأساسية للبنين والبنات' : 'Al-Azaiba School') : (language === 'ar' ? 'وزارة التعليم' : 'Ministry of Education')}
+                {userProfile.role === 'school' ? (userProfile.schoolName || (language === 'ar' ? 'مدرسة الدقم للتعليم الأساسي' : 'Duqm Basic Education School')) : (language === 'ar' ? 'وزارة التعليم' : 'Ministry of Education')}
               </p>
             </div>
             <div>
@@ -54,7 +54,7 @@ export function SettingsView({ userProfile, language, onUpdateSubject, sandboxAc
                     onChange={(e) => onUpdateSubject(e.target.value)}
                     className="w-full text-xs font-bold text-indigo-700 bg-transparent border-none outline-none cursor-pointer focus:ring-0"
                   >
-                    {subjects.map(s => <option key={s} value={s}>{translateSubject(s, language)}</option>)}
+                    {subjects.map((s, index) => <option key={`setting-subj-${s}-${index}`} value={s}>{translateSubject(s, language)}</option>)}
                   </select>
                 ) : userProfile.role === 'moderator' ? (
                   <div className="flex items-center gap-1.5 justify-between w-full">

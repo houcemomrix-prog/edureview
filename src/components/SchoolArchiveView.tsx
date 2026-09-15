@@ -1,3 +1,4 @@
+import { DocumentViewer } from './DocumentViewer';
 import React, { useState, useEffect } from 'react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
@@ -765,7 +766,7 @@ export function SchoolArchiveView({
       (form.schoolName || '').toLowerCase().includes(searchTerm.toLowerCase());
       
     // Determine signature completion status (needs teacher signed if not Grade 12)
-    const needsTeacher = form.grade !== 'Grade 12';
+    const needsTeacher = true;
     const isFullySigned = !!(form.isSigned && form.isExaminerSigned && (!needsTeacher || form.isTeacherSigned));
 
     // System administrator custom filters
@@ -799,7 +800,7 @@ export function SchoolArchiveView({
 
   // Calculate stats for the certified archive view
   const fullySignedFormsList = archivedForms.filter(f => {
-    const needsTeacher = f.grade !== 'Grade 12';
+    const needsTeacher = true;
     const isFullySigned = !!(f.isSigned && f.isExaminerSigned && (!needsTeacher || f.isTeacherSigned));
     if (!isFullySigned) return false;
 
@@ -1010,7 +1011,7 @@ export function SchoolArchiveView({
         
         <div className="relative flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="space-y-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-400/15 text-amber-300 rounded-full text-[11px] font-black tracking-wide uppercase">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-400/15 text-amber-300 rounded-full text-[11px] font-black uppercase">
               🗃️ {certifiedOnly 
                 ? (language === 'ar' ? 'أرشيف الاستمارات' : 'Forms Archive')
                 : (language === 'ar' ? 'الأرشيف الوطني الرقمي' : 'Digital School Archive')}
@@ -1064,8 +1065,8 @@ export function SchoolArchiveView({
                 <div className="text-2xl sm:text-3xl font-black text-rose-400 font-sans">
                   {nonMatchingForms.length}
                 </div>
-              </div>
             </div>
+              </div>
           ) : (
             <div className="flex gap-4 shrink-0 bg-white/5 p-4 rounded-2xl border border-white/10 text-center">
               <div>
@@ -1124,9 +1125,9 @@ export function SchoolArchiveView({
                     onChange={(e) => setAdminSchoolFilter(e.target.value)}
                     className="w-full text-xs rounded-xl border border-slate-200 p-2 outline-hidden focus:border-[#821315]/50 bg-slate-50/50 text-right font-semibold cursor-pointer text-slate-700"
                   >
-                    <option value="all">{language === 'ar' ? 'جميع المدارس 🏛️' : 'All Schools'}</option>
-                    {uniqueSchools.map((sch) => (
-                      <option key={sch} value={sch}>{sch}</option>
+                    <option key="sch-filter-all" value="all">{language === 'ar' ? 'جميع المدارس 🏛️' : 'All Schools'}</option>
+                    {uniqueSchools.map((sch, idx) => (
+                      <option key={`sch-filter-${sch || 'sch'}-${idx}`} value={sch}>{sch}</option>
                     ))}
                   </select>
                 </div>
@@ -1141,9 +1142,9 @@ export function SchoolArchiveView({
                     onChange={(e) => setAdminSubjectFilter(e.target.value)}
                     className="w-full text-xs rounded-xl border border-slate-200 p-2 outline-hidden focus:border-[#821315]/50 bg-slate-50/50 text-right font-semibold cursor-pointer text-slate-700"
                   >
-                    <option value="all">{language === 'ar' ? 'جميع المواد 📚' : 'All Subjects'}</option>
-                    {uniqueSubjects.map((sub) => (
-                      <option key={sub} value={sub}>{sub}</option>
+                    <option key="sub-filter-all" value="all">{language === 'ar' ? 'جميع المواد 📚' : 'All Subjects'}</option>
+                    {uniqueSubjects.map((sub, idx) => (
+                      <option key={`sub-filter-${sub || 'sub'}-${idx}`} value={sub}>{sub}</option>
                     ))}
                   </select>
                 </div>
@@ -1276,79 +1277,13 @@ export function SchoolArchiveView({
                 <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto shrink-0 justify-end">
                   {showPrincipalSignBtn && (
                     <>
-                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-emerald-50/90 border border-emerald-200 px-3 py-2 rounded-xl">
-                        <div className="flex items-center gap-2">
-                          <input
-                            id="include-stamp-checkbox"
-                            type="checkbox"
-                            checked={includeStamp}
-                            onChange={(e) => setIncludeStamp(e.target.checked)}
-                            className="w-4 h-4 text-emerald-600 border-emerald-300 rounded focus:ring-emerald-500 cursor-pointer"
-                          />
-                          <label htmlFor="include-stamp-checkbox" className="text-[12px] font-bold text-emerald-800 select-none cursor-pointer">
-                            {language === 'ar' ? 'إرفاق الختم الرسمي للوزارة' : 'Attach Official Ministry Stamp'}
-                          </label>
-                        </div>
-                        <div className="h-px sm:h-4 w-full sm:w-px bg-emerald-200" />
-                        <label className="text-[11px] font-black text-emerald-700 hover:text-emerald-900 cursor-pointer flex items-center justify-center gap-1">
-                          <Download className="w-3.5 h-3.5 rotate-180" />
-                          <span>{language === 'ar' ? 'تحميل ختم مخصص (PNG)' : 'Upload Custom Stamp (PNG)'}</span>
-                          <input
-                            type="file"
-                            accept="image/png"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                const reader = new FileReader();
-                                reader.onload = (event) => {
-                                  const result = event.target?.result as string;
-                                  if (result) {
-                                    saveActiveStamp(result);
-                                    onSuccess(
-                                      language === 'ar' 
-                                        ? '✓ تم تحميل ختم ومصادقة المدير المخصص بنجاح!' 
-                                        : 'Custom principal stamp PNG uploaded and applied successfully!'
-                                    );
-                                    setIncludeStamp(false);
-                                    setTimeout(() => setIncludeStamp(true), 15);
-                                  }
-                                };
-                                reader.readAsDataURL(file);
-                              }
-                            }}
-                            className="hidden"
-                          />
-                        </label>
-                        {typeof window !== 'undefined' && window.localStorage.getItem('oman_moe_custom_stamp') && (
-                          <>
-                            <div className="h-px sm:h-4 w-full sm:w-px bg-emerald-200" />
-                            <button
-                              type="button"
-                              onClick={() => {
-                                window.localStorage.removeItem('oman_moe_custom_stamp');
-                                onSuccess(
-                                  language === 'ar' 
-                                    ? '✓ تم استعادة ختم الوزارة الافتراضي.' 
-                                    : 'Restored default official stamp.'
-                                );
-                                setIncludeStamp(false);
-                                setTimeout(() => setIncludeStamp(true), 15);
-                              }}
-                              className="text-[11px] font-bold text-rose-600 hover:text-rose-800 hover:underline cursor-pointer"
-                            >
-                              {language === 'ar' ? 'إعادة تعيين' : 'Reset'}
-                            </button>
-                          </>
-                        )}
-                      </div>
-
                       <button
                         type="button"
                         onClick={() => handleStartSignature(selectedForm, 'principal')}
                         className="flex-1 sm:flex-none px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-sm flex items-center justify-center gap-1.5 cursor-pointer animate-pulse"
                       >
                         <PenTool className="w-3.5 h-3.5" />
-                        <span>{language === 'ar' ? '🖊️ توقيع واعتماد المدير والختم (المرحلة 3)' : 'Sign & Stamp as Principal'}</span>
+                        <span>{language === 'ar' ? 'ختم وتوقيع' : 'Stamp & Sign'}</span>
                       </button>
                     </>
                   )}
@@ -1565,9 +1500,10 @@ export function SchoolArchiveView({
               </div>
 
               {/* Printable Ministry Landscape layout block */}
-              <div 
-                id="printable-archive-form"
-                className="bg-white border-2 border-slate-350 shadow-xl p-8 text-slate-900 relative select-text font-sans w-full max-w-[1000px] min-h-[1100px] h-auto leading-relaxed mx-auto rounded-3xl pb-12 overflow-hidden"
+              <DocumentViewer language={language} documentWidth={1000}>
+                <div 
+                  id="printable-archive-form"
+                className="bg-white border-2 border-slate-350 shadow-xl p-8 text-slate-900 relative select-text font-sans w-[1000px] min-w-[1000px] shrink-0 min-h-[1100px] h-auto leading-relaxed mx-auto rounded-3xl pb-12 text-right"
                 style={{ direction: 'rtl' }}
               >
                 {formStyles && (
@@ -1701,7 +1637,7 @@ export function SchoolArchiveView({
                         fontFamily: `'${formStyles.primaryFont}', sans-serif`
                       }}
                     >
-                      {formStyles.watermarkText || 'وزارة التربية والتعليم - وثيقة فحص رسمية'}
+                      {formStyles.watermarkText || 'وزارة التعليم - وثيقة فحص رسمية'}
                     </div>
                   </div>
                 )}
@@ -1828,19 +1764,27 @@ export function SchoolArchiveView({
                       </div>
                       <table className="w-full text-right text-[16px] border-collapse leading-normal printable-grades-table">
                         <thead>
-                          <tr className="bg-[#821315]/5 text-[#821315] font-black text-[15px] border-b-2 border-[#821315]">
-                            <th className="py-2 px-1.5 border-l border-[#821315]/45 text-center w-8">م</th>
-                            <th className="py-2 px-3 border-l border-[#821315]/45 text-right w-40">{language === 'ar' ? 'اسم الطالب/ة' : 'Student Name'}</th>
-                            <th className="py-2 px-2 border-l border-[#821315]/45 text-center w-12">الصف</th>
-                            <th className="py-2 px-3 border-l border-[#821315]/45 w-24">الأداة</th>
-                            <th className="py-2 px-1.5 border-l border-[#821315]/45 text-center w-20 bg-[#821315]/5 pb-3" colSpan={2}>
-                              <div className="text-center font-black text-[18px] text-[#821315] tracking-wide mb-1.5 mt-1">{language === 'ar' ? 'الدرجـــة' : 'Grade'}</div>
-                              <div className="grid grid-cols-2 text-[15.5px] border-t border-dashed border-[#821315]/40 pt-1.5 font-black">
-                                <span className="text-[#821315]">{language === 'ar' ? 'قبْل' : 'Before'}</span>
-                                <span className="text-[#821315]">{language === 'ar' ? 'بعْد' : 'After'}</span>
+                          <tr className="bg-[#821315]/5 text-[#821315] font-black text-[15px] border-b-2 border-[#821315]/45">
+                            <th className="py-2 px-1.5 border-l border-[#821315]/45 text-center w-8 align-middle">م</th>
+                            <th className="py-2 px-3 border-l border-[#821315]/45 text-right w-40 align-middle">{language === 'ar' ? 'اسم الطالب/ة' : 'Student Name'}</th>
+                            <th className="py-2 px-2 border-l border-[#821315]/45 text-center w-12 align-middle">الصف</th>
+                            <th className="py-2 px-3 border-l border-[#821315]/45 w-24 align-middle">الأداة</th>
+                            <th className="p-0 border-l border-[#821315]/45 text-center w-28 align-top" colSpan={2}>
+                              <div className="flex flex-col w-full h-full">
+                                <div className="flex items-center justify-center w-full font-black text-[15px] text-[#821315] py-1.5 border-b border-[#821315]/45">
+                                  {language === 'ar' ? 'الدرجة' : 'Grade'}
+                                </div>
+                                <div className="grid grid-cols-2 text-[14px] font-black h-full">
+                                  <div className="flex items-center justify-center border-l border-[#821315]/45 px-1 py-1.5 bg-[#821315]/10">
+                                    {language === 'ar' ? 'قبل' : 'Before'}
+                                  </div>
+                                  <div className="flex items-center justify-center px-1 py-1.5 bg-[#821315]/10">
+                                    {language === 'ar' ? 'بعد' : 'After'}
+                                  </div>
+                                </div>
                               </div>
                             </th>
-                            <th className="py-2 px-3 text-right">{language === 'ar' ? 'سبب التعديل والقرار الفني للفرز والمطابقة بوزارة التعليم' : 'Modification Reason'}</th>
+                            <th className="py-2 px-3 text-center border-l border-[#821315]/45 font-black text-[15px] text-[#821315] align-middle">{language === 'ar' ? 'سبب التعديل' : 'Modification Reason'}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-[#821315]/45 text-slate-700">
@@ -1868,8 +1812,8 @@ export function SchoolArchiveView({
                                 <td className="py-2.5 px-3 border-l border-[#821315]/45 font-bold whitespace-normal break-words text-slate-800">{s.name || '---'}</td>
                                 <td className="py-2.5 px-2 border-l border-[#821315]/45 text-center font-semibold font-mono">{gradeClassStr}</td>
                                 <td className="py-2.5 px-3 border-l border-[#821315]/45 whitespace-normal break-words font-bold text-slate-755">{s.level}</td>
-                                <td className="py-2.5 px-1.5 border-l border-dashed border-[#821315]/45 text-center font-mono font-black text-black text-[15px] bg-slate-50">{beforeVal}</td>
-                                <td className="py-2.5 px-1.5 border-l border-[#821315]/45 text-center font-mono font-black text-red-900 text-[15px] bg-red-50">{afterVal}</td>
+                                <td className="py-2.5 px-1.5 border-l border-dashed border-[#821315]/45 text-center font-mono font-black text-black text-[15px] bg-slate-50 w-14">{beforeVal}</td>
+                                <td className="py-2.5 px-1.5 border-l border-[#821315]/45 text-center font-mono font-black text-red-900 text-[15px] bg-red-50 w-14">{afterVal}</td>
                                 <td className="py-2.5 px-3 text-center font-bold whitespace-normal break-words text-[12px] text-slate-800">
                                   {['1', '2', '3', '4', '5', '6'].includes(s.notes?.trim() || '') ? (
                                     <span className="font-mono text-[#821315] font-black text-[13px] bg-red-50/50 px-2 py-0.5 rounded">{s.notes}</span>
@@ -1887,7 +1831,7 @@ export function SchoolArchiveView({
                     {/* Left col-span-7: Technical Observations */}
                     <div className="col-span-7 border-2 border-[#821315] rounded overflow-hidden bg-white flex flex-col justify-between">
                       <div className="bg-[#821315]/5 text-[#821315] px-3 py-1.5 text-[15px] font-black text-center border-b-2 border-[#821315]">
-                        {language === 'ar' ? 'الملاحظات الفنية على أدوات التقويم المستمر (التقرير المعتمد للجنة)' : 'Technical Observations / Audit Comments'}
+                        {language === 'ar' ? 'الملاحظات الفنية على أدوات التقويم المستمر - التقرير المعتمد للجنة' : 'Technical Observations / Audit Comments'}
                       </div>
                       <table className="w-full text-right text-[16px] border-collapse leading-normal flex-1">
                         <thead>
@@ -1902,7 +1846,7 @@ export function SchoolArchiveView({
                             <tr key={`archive-school-obs-${obs.tool || 'obs'}-${idx}`} className="hover:bg-slate-50/20">
                               <td className="py-2.5 px-3 border-l border-[#821315]/45 text-center font-bold bg-[#821315]/5 text-[#821315]">{obs.gradeClass}</td>
                               <td className="py-2.5 px-3 border-l border-[#821315]/45 font-bold whitespace-normal break-words">{obs.tool}</td>
-                              <td className="py-2.5 px-3 text-slate-950 font-black text-center whitespace-normal break-words leading-relaxed text-[15px]">{language === 'ar' ? `ملاحظة رقم (${idx + 1})` : `Observation No. (${idx + 1})`}</td>
+                              <td className="py-2.5 px-3 text-slate-950 font-black text-center whitespace-normal break-words leading-relaxed text-[15px]">{language === 'ar' ? `ملاحظة رقم ${idx + 1}` : `Observation No. (${idx + 1})`}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -1912,7 +1856,7 @@ export function SchoolArchiveView({
                   </div>
 
                   {/* Row 4: Beautiful Bottom Footer Bar with Suggested Program and signatures */}
-                  <div className="border border-[#821315] rounded overflow-hidden bg-white" style={{ marginTop: formStyles?.signaturesPaddingY || '16px' }}>
+                  <div className="border border-[#821315] rounded bg-white" style={{ marginTop: formStyles?.signaturesPaddingY || '16px' }}>
                     <div className="flex w-full text-[16px]" dir="rtl" style={{ display: 'flex', flexDirection: 'row', width: '100%' }}>
                       
                       {/* Professional development space */}
@@ -1924,20 +1868,20 @@ export function SchoolArchiveView({
                       </div>
 
                       {/* Teacher Signature Block (for continuous assessment only) - respects showTeacherSignature toggle */}
-                      {selectedForm.grade !== 'Grade 12' && (!formStyles || formStyles.showTeacherSignature !== false) && (
-                        <div className="p-3 border-r border-[#821315]/80 text-right bg-white flex flex-col justify-center" style={{ width: '21%', flex: '0 0 21%', boxSizing: 'border-box' }}>
+                      {((!formStyles || formStyles.showTeacherSignature !== false) || selectedForm.grade === 'Grade 12') && (
+                        <div className="p-3 border-r border-[#821315]/80 text-right flex flex-col justify-center" style={{ width: '21%', flex: '0 0 21%', boxSizing: 'border-box' }}>
                           <span className="font-extrabold text-[#821315] block text-[15px]">
                             {formStyles ? (formStyles.sectionTeacherSignAr || 'معلم المادة الموقع:') : 'معلم المادة الموقع:'}
                           </span>
                           <p className="text-slate-800 font-black text-[15px] mt-1 leading-tight">
                             {selectedForm.isTeacherSigned 
-                              ? selectedForm.teacherSignedName 
-                              : selectedForm.teacherName || 'معلم المادة'}
+                              ? (selectedForm.teacherSignedName || '').replace(/[)(]/g, ' ')
+                              : (selectedForm.teacherName || 'معلم المادة').replace(/[)(]/g, ' ')}
                           </p>
                           <div className="text-[13px] text-slate-400 mt-2 block w-full">
                             {selectedForm.isTeacherSigned ? (
                               <div className="block w-full">
-                                <span className="font-mono text-sky-600 font-extrabold tracking-wide block w-full text-[12px]" style={{ direction: 'ltr' }}>
+                                <span className="font-mono text-sky-600 font-extrabold block w-full text-[12px]" style={{ direction: 'ltr' }}>
                                   {selectedForm.teacherSignatureQrData}
                                 </span>
                               </div>
@@ -1949,35 +1893,19 @@ export function SchoolArchiveView({
                       )}
 
                       {/* Examiner details */}
-                      <div className="p-3 border-r border-[#821315]/80 text-right flex flex-col justify-center" style={{ width: selectedForm.grade === 'Grade 12' ? '19%' : '18%', flex: selectedForm.grade === 'Grade 12' ? '0 0 19%' : '0 0 18%', boxSizing: 'border-box' }}>
+                      <div className="p-3 border-r border-[#821315]/80 text-right flex flex-col justify-center" style={{ width: '21%', flex: '0 0 21%', boxSizing: 'border-box' }}>
                         <span className="font-extrabold text-[#821315] block text-[15px]">
                           {formStyles ? (formStyles.sectionAuditorSignAr || 'مشرف فحص ومطابقة المادة:') : 'مشرف فحص ومطابقة المادة:'}
                         </span>
                         <p className="text-slate-800 font-black text-[15px] mt-1 leading-tight">
                           {selectedForm.isExaminerSigned 
-                            ? selectedForm.examinerSignedName 
-                            : selectedForm.examinerName || 'مشرف فحص ومطابقة المادة'}
+                            ? (selectedForm.examinerSignedName || '').replace(/[)(]/g, ' ').replace('مشرف ومدقق محافظة الوسطى', '').replace('مشرف ومدقق', '').trim()
+                            : (selectedForm.examinerName || 'مشرف فحص ومطابقة المادة').replace(/[)(]/g, ' ').replace('مشرف ومدقق محافظة الوسطى', '').replace('مشرف ومدقق', '').trim()}
                         </p>
-                        {selectedForm.isExaminerSigned && selectedForm.conformanceStatus && (
-                          <div className="mt-1 flex flex-wrap gap-1">
-                            <span className={`px-1.5 py-0.5 rounded-sm text-[10px] font-black leading-none ${
-                              selectedForm.conformanceStatus === 'conforming' 
-                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' 
-                                : 'bg-rose-100 text-rose-800 border border-rose-350'
-                            }`}>
-                              {selectedForm.conformanceStatus === 'conforming' ? '☑️ مطابقة' : '☒ غير مطابقة'}
-                            </span>
-                            {selectedForm.hasGradeRevisions && (
-                              <span className="px-1.5 py-0.5 rounded-sm text-[10px] font-black leading-none bg-amber-100 text-amber-805 border border-amber-300">
-                                ✏️ تعديل درجات
-                              </span>
-                            )}
-                          </div>
-                        )}
                         <div className="text-[13px] text-slate-400 mt-2 block w-full">
                           {selectedForm.isExaminerSigned ? (
                             <div className="block w-full">
-                              <span className="font-mono text-violet-600 font-extrabold tracking-wide block w-full text-[12px]" style={{ direction: 'ltr' }}>
+                              <span className="font-mono text-violet-600 font-extrabold block w-full text-[12px]" style={{ direction: 'ltr' }}>
                                 {selectedForm.examinerSignatureQrData}
                               </span>
                             </div>
@@ -1988,7 +1916,7 @@ export function SchoolArchiveView({
                       </div>
 
                       {/* Principal and Stamp */}
-                      <div className="p-3 border-r border-[#821315]/80 text-right bg-white flex flex-col justify-center relative" style={{ width: selectedForm.grade === 'Grade 12' ? '36%' : '28%', flex: selectedForm.grade === 'Grade 12' ? '0 0 36%' : '0 0 28%', boxSizing: 'border-box' }}>
+                      <div className="p-3 border-r border-[#821315]/80 text-right flex flex-col justify-center relative" style={{ width: selectedForm.grade === 'Grade 12' ? '36%' : '28%', flex: selectedForm.grade === 'Grade 12' ? '0 0 36%' : '0 0 28%', boxSizing: 'border-box' }}>
                         {selectedForm.isSigned && selectedForm.signatureStampUrl !== 'no_stamp' && (
                           <DraggableStamp 
                             src={getActiveStamp(selectedForm.schoolId || selectedForm.schoolName)} 
@@ -2004,13 +1932,13 @@ export function SchoolArchiveView({
                         </div>
                         <div className="text-slate-800 font-black text-[15px] mt-1.5 block w-full font-black relative z-10">
                           {selectedForm.isSigned 
-                            ? selectedForm.signedByPrincipalName 
-                            : selectedForm.principalName || 'بانتظار الاعتماد'}
+                            ? (selectedForm.signedByPrincipalName || '').replace(/[)(]/g, ' ')
+                            : (selectedForm.principalName || 'بانتظار الاعتماد').replace(/[)(]/g, ' ')}
                         </div>
                         <div className="text-[13px] text-slate-400 mt-2 block w-full relative z-10 font-mono">
                           {selectedForm.isSigned ? (
                             <div className="block w-full">
-                              <span className="font-mono text-[#821315] font-extrabold tracking-wide block w-full text-[12px]" style={{ direction: 'ltr' }}>
+                              <span className="font-mono text-[#821315] font-extrabold block w-full text-[12px]" style={{ direction: 'ltr' }}>
                                 {selectedForm.signatureQrData}
                               </span>
                             </div>
@@ -2024,7 +1952,8 @@ export function SchoolArchiveView({
                   </div>
 
                 </div>
-              </div>
+                  </div>
+              </DocumentViewer>
 
             </div>
           ) : (
@@ -2237,7 +2166,7 @@ export function SchoolArchiveView({
 
             {/* Error or validation info box style */}
             <div className="p-3 bg-indigo-50/50 rounded-2xl border border-indigo-100 text-[11px] text-slate-450 leading-relaxed">
-              💡 <span className="font-bold text-[#821315]">شروط التوقيع:</span> الخيارات المتاحة هي: (مطابقة) أو (غير مطابقة) وبإمكانك دمج (تعديل درجات) مع أي منهما. غير مسموح باختيار (تعديل درجات) بمفرده.
+              💡 <span className="font-bold text-[#821315]">شروط التوقيع:</span> الخيارات المتاحة هي: "مطابقة" أو "غير مطابقة" وبإمكانك دمج "تعديل درجات" مع أي منهما. غير مسموح باختيار "تعديل درجات" بمفرده. <br/> <span className="font-bold mt-1 block">ملاحظة: سواء كانت الاستمارة مطابقة أم لا. يوقع الفاحص ثم يوقع المعلم ثم يوقع المدير.</span>
             </div>
 
             {/* Selecting compliance status with beautiful radio check buttons */}

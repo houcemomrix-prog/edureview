@@ -307,7 +307,7 @@ export function AdminStatsDashboard({ assessments, language = 'en' }: AdminStats
     } else {
       // Temporary fallback while db is fetching
       const defaultSchools = [
-        { id: 'demo-school-1', name: language === 'ar' ? 'مدرسة العذيبة الأساسية' : 'Al-Azaiba School', region: language === 'ar' ? 'مسقط، السيب' : 'Muscat, Al Seeb', status: 'Active' },
+        { id: 'demo-school-1', name: language === 'ar' ? 'مدرسة الدقم للتعليم الأساسي' : 'Duqm Basic Education School', region: language === 'ar' ? 'محافظة الوسطى، الدقم' : 'Al Wusta, Duqm', status: 'Active' },
         { id: 'seed-school-2', name: language === 'ar' ? 'مدرسة الموالح للتعليم الأساسي' : 'Al-Mawaleh Basic Education', region: language === 'ar' ? 'مسقط، السيب' : 'Muscat, Al Seeb', status: 'Active' },
         { id: 'seed-school-3', name: language === 'ar' ? 'مدرسة السيب الثانوية' : 'Seeb Secondary School', region: language === 'ar' ? 'مسقط، السيب' : 'Muscat, Seeb Center', status: 'Pending Uploads' },
         { id: 'seed-school-4', name: language === 'ar' ? 'مدرسة صلالة النموذجية' : 'Salalah Model Academy', region: language === 'ar' ? 'ظفار، صلالة' : 'Dhofar, Salalah', status: 'Active' },
@@ -343,7 +343,7 @@ export function AdminStatsDashboard({ assessments, language = 'en' }: AdminStats
       } else {
         // Simple string comparison for standard fallbacks
         const key = (a.schoolName || '').trim().toLowerCase();
-        if (key.includes('azaiba') || key.includes('عذيبة')) matchedId = 'demo-school-1';
+        if (key.includes('duqm') || key.includes('دقم') || key.includes('azaiba') || key.includes('عذيبة')) matchedId = 'demo-school-1';
         else if (key.includes('mawaleh') || key.includes('موالح')) matchedId = 'seed-school-2';
         else if (key.includes('seeb') || key.includes('سيب')) matchedId = 'seed-school-3';
         else if (key.includes('salalah') || key.includes('صلالة')) matchedId = 'seed-school-4';
@@ -939,7 +939,7 @@ export function AdminStatsDashboard({ assessments, language = 'en' }: AdminStats
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-[11.5px] font-sans">
                   {isLoadingUsers ? (
-                    <tr>
+                    <tr key="admin-users-loading">
                       <td colSpan={7} className="py-14 text-center text-slate-400 font-medium">
                         <div className="flex items-center justify-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
@@ -948,7 +948,7 @@ export function AdminStatsDashboard({ assessments, language = 'en' }: AdminStats
                       </td>
                     </tr>
                   ) : filteredUsers.length === 0 ? (
-                    <tr>
+                    <tr key="admin-users-empty">
                       <td colSpan={7} className="py-14 text-center text-slate-400 font-bold">
                         {language === 'ar' ? '⚠️ لا توجد نتائج مطابقة لشروط البحث.' : '⚠️ No user logs match current query parameters.'}
                       </td>
@@ -988,8 +988,8 @@ export function AdminStatsDashboard({ assessments, language = 'en' }: AdminStats
                               <p className="font-bold text-slate-800">{displayType}</p>
                               {user.roleType === 'teacher' && user.gradesTaught && user.gradesTaught.length > 0 && (
                                 <div className="flex flex-wrap gap-1.5 mt-1.5">
-                                  {user.gradesTaught.map((gradeVal, index) => (
-                                    <span key={index} className="px-2 py-0.5 text-[8.5px] font-black tracking-wider rounded-md bg-amber-450/15 text-amber-850 font-sans border border-amber-400/20 animate-in fade-in">
+                                  {user.gradesTaught.map((gradeVal, gIndex) => (
+                                    <span key={`user-${user.uid || user.email || 'u'}-grade-${gradeVal}-${gIndex}`} className="px-2 py-0.5 text-[8.5px] font-black tracking-wider rounded-md bg-amber-450/15 text-amber-850 font-sans border border-amber-400/20 animate-in fade-in">
                                       {translateGrade(gradeVal, language)}
                                     </span>
                                   ))}
@@ -1006,7 +1006,7 @@ export function AdminStatsDashboard({ assessments, language = 'en' }: AdminStats
                               </span>
                             ) : user.role === 'admin' ? (
                               <span className="text-slate-400 font-medium text-xs">—</span>
-                            ) : user.schoolName || user.schoolName === '' ? (language === 'ar' && user.schoolName === 'Al-Azaiba School' ? 'مدرسة العذيبة الأساسية للتعليم' : (user.schoolName || '-')) : '-'}
+                            ) : (user.schoolName || '-')}
                           </td>
 
                           <td className="py-4 px-4 font-mono text-slate-600">
@@ -1140,7 +1140,7 @@ export function AdminStatsDashboard({ assessments, language = 'en' }: AdminStats
                           <td className={`py-3 px-4 ${language === 'ar' ? 'text-right' : 'text-left'}`}>
                             <div>
                               <p className="font-extrabold text-slate-800 leading-tight block">
-                                {language === 'ar' && school.name === 'Al-Azaiba School' ? 'مدرسة العذيبة الأساسية' : school.name}
+                                {school.name}
                               </p>
                               <p className="text-[10px] text-slate-400 font-sans truncate mt-0.5">{school.region}</p>
                             </div>
@@ -1188,7 +1188,7 @@ export function AdminStatsDashboard({ assessments, language = 'en' }: AdminStats
             <div className="bg-slate-50 border border-slate-150 p-4.5 rounded-2xl space-y-2 animate-in slide-in-from-bottom-2 duration-150 text-xs text-right">
               <div className="flex items-center justify-between border-b border-slate-205 pb-1.5">
                 <span className="font-extrabold text-slate-800 font-heading tracking-wide uppercase text-[10px]">
-                  {language === 'ar' ? 'تفاصيل المراجعة والتدقيق للمدرسة: ' : 'Institutional Detail Review: '} {language === 'ar' && selectedInspectSchool === 'Al-Azaiba School' ? 'مدرسة العذيبة الأساسية' : selectedInspectSchool}
+                  {language === 'ar' ? 'تفاصيل المراجعة والتدقيق للمدرسة: ' : 'Institutional Detail Review: '} {selectedInspectSchool}
                 </span>
                 <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold border border-emerald-100">
                   {language === 'ar' ? 'مطابقات المنهج الوطني بوزارة التعليم' : 'Oman National Syllabus Matches'}
@@ -1196,7 +1196,7 @@ export function AdminStatsDashboard({ assessments, language = 'en' }: AdminStats
               </div>
               <p className="text-slate-500 leading-relaxed text-[11px]">
                 {language === 'ar' 
-                  ? `قامت مدرسة (${selectedInspectSchool === 'Al-Azaiba School' ? 'مدرسة العذيبة الأساسية' : selectedInspectSchool}) برفع وتأكيد حزم ملفات المنهج. تخضع جميع المرفوعات للفحص العكسي ضد البنية المرجعية العمانية لتجنب تفاوت وتعارض الأهداف قبل إرسالها للتقييم النهائي.`
+                  ? `قامت مدرسة (${selectedInspectSchool}) برفع وتأكيد حزم ملفات المنهج. تخضع جميع المرفوعات للفحص العكسي ضد البنية المرجعية العمانية لتجنب تفاوت وتعارض الأهداف قبل إرسالها للتقييم النهائي.`
                   : `This institution has loaded ${schoolStats.find(s => s.name === selectedInspectSchool)?.uploaded || 0} total curriculum packets. All papers are automatically mapped under the Oman Unified Portal system to detect any outline deviations before being issued to pedagogical units.`}
               </p>
             </div>
@@ -1713,11 +1713,11 @@ export function AdminStatsDashboard({ assessments, language = 'en' }: AdminStats
                   onChange={(e) => setComplianceSchoolFilter(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-205 rounded-xl bg-white text-slate-800 font-bold focus:outline-none focus:ring-1 focus:ring-emerald-600 font-sans"
                 >
-                  <option value="all">{language === 'ar' ? 'كل المدارس تحت النطاق 🏫' : 'All Institutional Schools'}</option>
-                  {complianceSchoolsDropdown.map(s => {
+                  <option key="comp-drop-all" value="all">{language === 'ar' ? 'كل المدارس تحت النطاق 🏫' : 'All Institutional Schools'}</option>
+                  {complianceSchoolsDropdown.map((s, index) => {
                     const disp = language === 'ar' ? s.schoolNameAr : s.schoolNameEn;
                     return (
-                      <option key={`comp-drop-${s.schoolId}`} value={s.schoolId}>
+                      <option key={`comp-drop-${s.schoolId || 'sch'}-${index}`} value={s.schoolId}>
                         {disp}
                       </option>
                     );
