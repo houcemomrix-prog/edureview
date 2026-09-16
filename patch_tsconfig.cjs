@@ -1,0 +1,10 @@
+const fs = require('fs');
+let tsconfig = JSON.parse(fs.readFileSync('tsconfig.json', 'utf8'));
+if (!tsconfig.compilerOptions) tsconfig.compilerOptions = {};
+tsconfig.compilerOptions.jsx = "react-jsx";
+tsconfig.compilerOptions.module = "esnext";
+tsconfig.compilerOptions.moduleResolution = "bundler";
+if (!tsconfig.include) tsconfig.include = [];
+if (!tsconfig.include.includes("vite-env.d.ts")) tsconfig.include.push("vite-env.d.ts");
+if (!tsconfig.include.includes("src")) tsconfig.include.push("src");
+fs.writeFileSync('tsconfig.json', JSON.stringify(tsconfig, null, 2));

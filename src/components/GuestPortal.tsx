@@ -1,3 +1,4 @@
+import { supabase } from '../supabaseClient';
 import React, { useState } from 'react';
 import { School, Users, ClipboardList, Lock, LogIn, ShieldAlert, X, Mail, Key, CheckCircle2, RotateCcw, ChevronDown, Check } from 'lucide-react';
 import { OMAN_WUSTA_SCHOOLS } from '../data/schoolsData';
@@ -132,52 +133,37 @@ export const GuestPortal: React.FC<GuestPortalProps> = ({
 
   const handleForgotEmailSubmit = async () => {
     const trimmed = forgotEmail.trim().toLowerCase();
-    const isAuthorized = trimmed.endsWith('@moe.om') || trimmed === 'housmhousm17@gmail.com' || trimmed === 'school@moe.om' || trimmed === 'teacher@moe.om' || trimmed === 'moderator@moe.om' || trimmed === 'hossam9866@moe.om';
     
     if (!trimmed) {
       setForgotError(language === 'ar' ? 'يرجى إدخال البريد الإلكتروني.' : 'Please enter your email.');
       return;
     }
     
-    if (!isAuthorized) {
-      setForgotError(language === 'ar' 
-        ? "عذراً، يجب أن يكون البريد الإلكتروني تابعاً لوزارة التعليم وينتهي بـ @moe.om" 
-        : "Access Denied. For safety, password recovery is restricted to official email addresses ending with @moe.om");
-      return;
-    }
-
     setEmailSending(true);
     setForgotError(null);
     setRealEmailSent(null);
 
-    
-
     try {
-      const res = await fetch("/api/send-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: trimmed, lang: language })
+      const { error } = await supabase.auth.resetPasswordForEmail(trimmed, {
+        redirectTo: 'https://edureview1.onrender.com/reset-password',
       });
-      const data = await res.json();
-      
-      if (res.ok && data.success) {
-        if (data.code) setGeneratedCode(data.code);
+
+      if (error) {
+        setForgotError(error.message);
+        setRealEmailSent(false);
+      } else {
         setRealEmailSent(true);
         setForgotSuccess(language === 'ar'
-          ? `✓ تم إرسال الرمز بنجاح لعلبة البريد الحقيقي: (${trimmed})! يرجى التحقق من البريد الوارد أو المجلد غير الهام.`
-          : `✓ Verification code successfully sent to real mailbox: (${trimmed})! Please check your inbox or spam folder.`
+          ? `✓ تم إرسال رابط إعادة تعيين كلمة المرور بنجاح إلى: (${trimmed})! يرجى التحقق من البريد الوارد.`
+          : `✓ Password reset link successfully sent to: (${trimmed})! Please check your inbox.`
         );
-      } else {
-        setRealEmailSent(false);
-        console.warn("Real email could not be sent as no keys are defined in environmental variables:", data.error);
       }
     } catch (err: any) {
       console.error("Transmission error: ", err);
       setRealEmailSent(false);
+      setForgotError(err.message || 'An error occurred');
     } finally {
       setEmailSending(false);
-      setForgotStep('otp');
-      setCopied(false);
     }
   };
 

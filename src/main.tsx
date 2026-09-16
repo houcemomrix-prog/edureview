@@ -1,3 +1,4 @@
+import { ResetPassword } from './components/ResetPassword.tsx';
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
@@ -46,9 +47,13 @@ if (typeof window !== 'undefined') {
   };
 }
 
+
+const path = window.location.pathname;
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    {path === '/reset-password' ? <ResetPassword /> : <App />}
   </StrictMode>,
 );
+
 
