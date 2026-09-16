@@ -1,4 +1,6 @@
 import { supabase } from '../supabaseClient';
+import { auth } from '../services/firebase';
+import { sendPasswordResetEmail } from 'firebase/auth';
 import React, { useState } from 'react';
 import { School, Users, ClipboardList, Lock, LogIn, ShieldAlert, X, Mail, Key, CheckCircle2, RotateCcw, ChevronDown, Check } from 'lucide-react';
 import { OMAN_WUSTA_SCHOOLS } from '../data/schoolsData';
@@ -144,9 +146,10 @@ export const GuestPortal: React.FC<GuestPortalProps> = ({
     setRealEmailSent(null);
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(trimmed, {
-        redirectTo: 'https://edureview1.onrender.com/reset-password',
+      await sendPasswordResetEmail(auth, trimmed, {
+        url: 'https://edureview1.onrender.com/reset-password'
       });
+      const error = null; // Mock error object to keep downstream logic
 
       if (error) {
         setForgotError(error.message);

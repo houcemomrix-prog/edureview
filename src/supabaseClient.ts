@@ -1,6 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+let supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+
+// Ensure the URL does not include /rest/v1 so auth endpoints resolve correctly
+if (supabaseUrl.endsWith('/rest/v1')) {
+  supabaseUrl = supabaseUrl.replace('/rest/v1', '');
+} else if (supabaseUrl.endsWith('/rest/v1/')) {
+  supabaseUrl = supabaseUrl.replace('/rest/v1/', '');
+}
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 if (!supabaseUrl || !supabaseAnonKey) {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
+import { auth } from '../services/firebase';
+import { confirmPasswordReset, verifyPasswordResetCode } from 'firebase/auth';
 import { ShieldCheck, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
 
 export const ResetPassword = () => {
@@ -8,26 +9,33 @@ export const ResetPassword = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  
+  const [oobCode, setOobCode] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [initLoading, setInitLoading] = useState(true);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (event === 'PASSWORD_RECOVERY') {
-          setShowForm(true);
-        }
-        setInitLoading(false);
-      }
-    );
-    
-    // Fallback to stop loading if no event triggers within a short time
-    const timeout = setTimeout(() => setInitLoading(false), 1500);
+    // Firebase auth tokens are sent as search params: ?mode=resetPassword&oobCode=...
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('oobCode');
 
-    return () => {
-      clearTimeout(timeout);
-      subscription.unsubscribe();
-    };
+    if (code) {
+      verifyPasswordResetCode(auth, code)
+        .then(() => {
+          setOobCode(code);
+          setShowForm(true);
+        })
+        .catch((err) => {
+          console.error("Invalid or expired action code.", err);
+          setShowForm(false);
+        })
+        .finally(() => {
+          setInitLoading(false);
+        });
+    } else {
+      setShowForm(false);
+      setInitLoading(false);
+    }
   }, []);
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
@@ -40,24 +48,27 @@ export const ResetPassword = () => {
       setError('Password must be at least 6 characters');
       return;
     }
+    
+    if (!oobCode) {
+      setError('Missing reset code. Please request a new link.');
+      return;
+    }
 
     setLoading(true);
     setError(null);
     setSuccess(null);
 
-    const { error: updateError } = await supabase.auth.updateUser({
-      password: newPassword
-    });
-
-    if (updateError) {
-      setError(updateError.message);
-    } else {
+    try {
+      await confirmPasswordReset(auth, oobCode, newPassword);
       setSuccess('Password updated successfully. You can now log in.');
       setTimeout(() => {
         window.location.href = '/';
       }, 3000);
+    } catch (updateError: any) {
+      setError(updateError.message || 'Failed to update password');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
