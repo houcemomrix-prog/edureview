@@ -135,9 +135,11 @@ const INITIAL_SANDBOX_USERS: Record<string, UserProfile> = {
   },
   'demo-admin-1': {
     uid: 'demo-admin-1',
-    name: 'خالد العامري (مدير النظام)',
+    name: 'أ. حسام عمري',
     email: 'hossam9866@moe.om',
     role: 'admin',
+    jobTitle: 'مدير النظام',
+    subject: 'English Language',
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30).toISOString()
   }
 };

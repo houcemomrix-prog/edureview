@@ -257,3 +257,16 @@ export interface TeacherNotification {
   createdAt: string;
   type: 'nudge' | 'alert' | 'info';
 }
+
+export function isDualRoleAccount(profile: UserProfile | null | undefined): boolean {
+  if (!profile) return false;
+  const em = (profile.email || '').toLowerCase().trim();
+  const nm = (profile.name || '').trim();
+  return (
+    em === 'hossam9866@moe.om' ||
+    em === 'housmhousm17@gmail.com' ||
+    nm.includes('حسام') ||
+    profile.uid === 'demo-admin-1'
+  );
+}
+

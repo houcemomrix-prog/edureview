@@ -22,9 +22,11 @@ import {
   Sun,
   Moon,
   Palette,
-  Check
+  Check,
+  Key,
+  ArrowLeftRight
 } from 'lucide-react';
-import { UserProfile, SchoolReport, TeacherNotification } from '../types';
+import { UserProfile, SchoolReport, TeacherNotification, isDualRoleAccount } from '../types';
 import { getTranslatedText, Language, translateSubject } from '../lib/translations';
 import { getSchoolReports, getTeacherNotifications, markTeacherNotificationRead } from '../services/db';
 import logoEmblem from './logo-emblem.svg';
@@ -38,6 +40,15 @@ const SUBJECTS = [
 ];
 
 const getUserSubtitle = (profile: UserProfile, lang: Language): string => {
+  // If user has dual role privileges (Admin + Examiner)
+  if (isDualRoleAccount(profile)) {
+    if (profile.role === 'admin') {
+      return lang === 'ar' ? 'مدير النظام (صلاحية فاحص إنجليزي)' : 'System Admin (English Examiner ready)';
+    } else {
+      return lang === 'ar' ? 'فاحص ومعتمد اللغة الإنجليزية' : 'English Language Examiner & Moderator';
+    }
+  }
+
   const role = profile.role;
   const roleType = profile.roleType;
   // Force jobTitle to "مدقق" if role is moderator, regardless of what's saved in the profile
@@ -100,6 +111,8 @@ interface HeaderProps {
   adminTab?: 'catalog' | 'stats' | 'database' | 'schools' | 'stamps' | 'signatures' | 'design';
   setAdminTab?: (tab: 'catalog' | 'stats' | 'database' | 'schools' | 'stamps' | 'signatures' | 'design') => void;
   onLogoClick?: () => void;
+  onChangePassword?: () => void;
+  onToggleDualRole?: () => void;
 }
 
 export function Header({
@@ -126,7 +139,9 @@ export function Header({
   setShowUploadForm,
   adminTab,
   setAdminTab,
-  onLogoClick
+  onLogoClick,
+  onChangePassword,
+  onToggleDualRole
 }: HeaderProps) {
   const [showSandboxDropdown, setShowSandboxDropdown] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -608,17 +623,56 @@ export function Header({
 
           {/* Authenticated User Profile Pill */}
           {userProfile ? (
-            <div className="flex items-center gap-1.5 sm:gap-2.5 bg-white/10 border border-white/15 rounded-xl p-1 sm:p-1.5 px-2 sm:px-3 transition-all shrink-0 font-sans select-none shadow-xs">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              {/* Dual Role Switcher Button for Hossam Amri */}
+              {isDualRoleAccount(userProfile) && onToggleDualRole && (
+                <button
+                  type="button"
+                  onClick={onToggleDualRole}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-300 hover:from-amber-300 hover:to-amber-200 text-slate-950 font-black text-[11px] transition-all cursor-pointer shadow-md hover:shadow-lg active:scale-95 border border-amber-200 select-none animate-in fade-in"
+                  title={
+                    userProfile.role === 'admin'
+                      ? (language === 'ar' ? 'التبديل إلى وضع: فاحص ومعتمد اللغة الإنجليزية' : 'Switch to: English Language Examiner')
+                      : (language === 'ar' ? 'التبديل إلى وضع: مدير النظام' : 'Switch to: System Administrator')
+                  }
+                >
+                  <ArrowLeftRight className="w-3.5 h-3.5 text-slate-950" />
+                  <span className="hidden sm:inline">
+                    {userProfile.role === 'admin'
+                      ? (language === 'ar' ? 'تبديل إلى: فاحص إنجليزي' : 'Switch: English Examiner')
+                      : (language === 'ar' ? 'تبديل إلى: مدير النظام' : 'Switch: Admin')}
+                  </span>
+                  <span className={`px-1.5 py-0.5 rounded text-[9.5px] font-black uppercase text-white shadow-2xs ${
+                    userProfile.role === 'admin' ? 'bg-[#0b5e32]' : 'bg-blue-800'
+                  }`}>
+                    {userProfile.role === 'admin' ? (language === 'ar' ? 'مدير' : 'Admin') : (language === 'ar' ? 'فاحص إنجليزي' : 'English')}
+                  </span>
+                </button>
+              )}
+
+              <div className="flex items-center gap-1.5 sm:gap-2.5 bg-white/10 border border-white/15 rounded-xl p-1 sm:p-1.5 px-2 sm:px-3 transition-all shrink-0 font-sans select-none shadow-xs">
               
-              {/* Logout Action Button on the outer edge */}
-              <button
-                type="button"
-                onClick={onLogout}
-                className="p-1 px-1 sm:px-1.5 hover:bg-white/15 text-emerald-100 hover:text-rose-300 rounded-lg transition-all cursor-pointer flex items-center justify-center"
-                title={language === 'ar' ? 'تسجيل الخروج' : 'Log Out'}
-              >
-                <LogOut className="w-3.5 h-3.5" />
-              </button>
+              {/* Logout & Change Password Action Buttons on the outer edge */}
+              <div className="flex items-center gap-0.5">
+                {onChangePassword && (
+                  <button
+                    type="button"
+                    onClick={onChangePassword}
+                    className="p-1 px-1 sm:px-1.5 hover:bg-white/15 text-emerald-100 hover:text-amber-300 rounded-lg transition-all cursor-pointer flex items-center justify-center"
+                    title={language === 'ar' ? 'تغيير كلمة المرور' : 'Change Password'}
+                  >
+                    <Key className="w-3.5 h-3.5" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={onLogout}
+                  className="p-1 px-1 sm:px-1.5 hover:bg-white/15 text-emerald-100 hover:text-rose-300 rounded-lg transition-all cursor-pointer flex items-center justify-center"
+                  title={language === 'ar' ? 'تسجيل الخروج' : 'Log Out'}
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              </div>
 
               {/* Profile details */}
               <div className="text-right rtl:text-right ltr:text-left text-xs leading-none">
@@ -641,6 +695,7 @@ export function Header({
               </div>
 
             </div>
+          </div>
           ) : (
             <div className="flex items-center gap-2">
               {showAdminLoginForm ? (
@@ -1238,6 +1293,39 @@ export function Header({
                     </div>
                   </div>
                   
+                  {/* Dual Role Switcher for Hossam Amri in Drawer */}
+                  {isDualRoleAccount(userProfile) && onToggleDualRole && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsOpen(false);
+                        onToggleDualRole();
+                      }}
+                      className="w-full py-2.5 mb-2 bg-gradient-to-r from-amber-400 to-amber-300 hover:from-amber-300 hover:to-amber-200 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm active:scale-98 border border-amber-300"
+                    >
+                      <ArrowLeftRight className="w-4 h-4 text-slate-950" />
+                      <span>
+                        {userProfile.role === 'admin'
+                          ? (language === 'ar' ? 'التبديل إلى: فاحص ومعتمد اللغة الإنجليزية' : 'Switch to: English Language Examiner')
+                          : (language === 'ar' ? 'التبديل إلى: مدير النظام' : 'Switch to: System Administrator')}
+                      </span>
+                    </button>
+                  )}
+
+                  {onChangePassword && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsOpen(false);
+                        onChangePassword();
+                      }}
+                      className="w-full py-2.5 mb-2 bg-emerald-50 hover:bg-emerald-100 text-[#0b5e32] border border-emerald-200 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-2xs"
+                    >
+                      <Key className="w-3.5 h-3.5 text-amber-600" />
+                      <span>{language === 'ar' ? 'تغيير كلمة المرور الخاصة بي' : 'Change My Password'}</span>
+                    </button>
+                  )}
+
                   <button
                     type="button"
                     onClick={() => {

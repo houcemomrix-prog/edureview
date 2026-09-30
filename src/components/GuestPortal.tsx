@@ -681,6 +681,23 @@ export const GuestPortal: React.FC<GuestPortalProps> = ({
                     }}
                     className="space-y-4"
                   >
+                    {/* Official Notice: Contact Admin for Reset */}
+                    <div className="p-3.5 bg-amber-50/90 border border-amber-200/90 rounded-2xl text-xs space-y-1 text-slate-800">
+                      <div className="flex items-center gap-1.5 text-amber-900 font-extrabold text-[11px]">
+                        <ShieldAlert className="w-4 h-4 text-amber-700 shrink-0" />
+                        <span>
+                          {language === 'ar' 
+                            ? "نسيت كلمة المرور؟ يرجى التواصل مع مدير النظام" 
+                            : "Forgot password? Contact System Administrator"}
+                        </span>
+                      </div>
+                      <p className="text-[10.5px] text-slate-600 leading-relaxed">
+                        {language === 'ar'
+                          ? "يمتلك مدير النظام صلاحية إعادة تعيين كلمات المرور مباشرة لكافة الكوادر التعليمية."
+                          : "The System Administrator has the authority to reset passwords directly for all staff."}
+                      </p>
+                    </div>
+
                     <div className="space-y-1">
                       <label className={`text-[9.5px] font-extrabold text-slate-400 uppercase tracking-widest block font-sans ${language === 'ar' ? 'text-right' : ''}`}>
                         {language === 'ar' ? "البريد الإلكتروني المعتمد بالوزارة" : "Authorized Ministry Email"}

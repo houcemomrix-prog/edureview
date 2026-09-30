@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 
 import { auth } from '../services/firebase';
-import { KeyRound, CheckCircle } from 'lucide-react';
+import { KeyRound, CheckCircle, Key } from 'lucide-react';
 
 import { UserProfile, UserRole } from '../types';
 import { getAllUserProfiles, createUserProfile, deleteUserProfileAdmin } from '../services/db';
@@ -96,6 +96,15 @@ export function UserDatabaseView({ language, subjects }: UserDatabaseViewProps) 
       
       if (!response.ok || !data.success) {
         throw new Error(data.error || 'Failed to change password');
+      }
+
+      // Sync local passwords storage for sandbox / instant login
+      try {
+        const savedPasswords = JSON.parse(localStorage.getItem('oman_moe_custom_passwords') || '{}');
+        savedPasswords[resetSearchEmail.trim().toLowerCase()] = resetNewPassword;
+        localStorage.setItem('oman_moe_custom_passwords', JSON.stringify(savedPasswords));
+      } catch (e) {
+        console.warn('Could not sync custom passwords:', e);
       }
 
       setResetSuccess(data.message || 'Password successfully updated.');
@@ -669,6 +678,22 @@ export function UserDatabaseView({ language, subjects }: UserDatabaseViewProps) 
                           title={language === 'ar' ? 'تعديل بيانات الكادر' : 'Edit Configuration'}
                         >
                           <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+
+                        {/* Reset Password Button */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setResetSearchEmail(u.email);
+                            setResetNewPassword('');
+                            setResetError(null);
+                            setResetSuccess(null);
+                            setIsResetPasswordModalOpen(true);
+                          }}
+                          className="p-1.5 rounded-lg border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 transition-all cursor-pointer"
+                          title={language === 'ar' ? `تغيير كلمة المرور للمستخدم (${u.email})` : `Reset Password for ${u.email}`}
+                        >
+                          <Key className="w-3.5 h-3.5" />
                         </button>
 
                         {/* Delete Flow */}
