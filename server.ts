@@ -2,6 +2,27 @@ import { Resend } from 'resend';
 
 // Store OTPs temporarily
 const otpStorage = new Map<string, { code: string; expiresAt: number }>();
+import { initializeApp, cert, getApps } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
+
+// Initialize firebase admin
+if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+  try {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+    if (!getApps().length) {
+      initializeApp({
+        credential: cert(serviceAccount)
+      });
+      console.log("Firebase Admin SDK initialized successfully via FIREBASE_SERVICE_ACCOUNT_KEY");
+    }
+  } catch (err) {
+    console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY", err);
+  }
+} else {
+  console.warn("FIREBASE_SERVICE_ACCOUNT_KEY is missing. Admin features (e.g. forced password reset) will not work.");
+}
+
 import express from "express";
 import path from "path";
 import { GoogleGenAI } from "@google/genai";
@@ -37,6 +58,68 @@ async function startServer() {
   app.use(express.json());
 
   // --- API Routes FIRST ---
+  app.post("/api/admin/change-password", async (req, res) => {
+    try {
+      if (!getApps().length) {
+        return res.status(500).json({ 
+          success: false, 
+          error: "Firebase Admin SDK is not configured.\n\nTo use admin features like forced password resets:\n1. Go to Firebase Console > Project Settings > Service Accounts\n2. Generate a new private key (JSON)\n3. Open AI Studio Settings > Secrets\n4. Add a secret named FIREBASE_SERVICE_ACCOUNT_KEY and paste the entire JSON content as its value." 
+        });
+      }
+
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ success: false, error: "Missing or invalid authorization header" });
+      }
+      
+      const idToken = authHeader.split("Bearer ")[1];
+      if (!idToken || idToken === "undefined" || idToken === "null") {
+        return res.status(401).json({ 
+          success: false, 
+          error: "Invalid or missing Firebase ID token. Please make sure you are signed in as an administrator (hossam9866@moe.om)." 
+        });
+      }
+
+      const decodedToken = await getAuth().verifyIdToken(idToken);
+      
+      // Verify admin role via Firestore
+      const db = getFirestore("ai-studio-9a076d22-26fb-4b95-8c95-7ec7c2a1a6c9");
+      const userDoc = await db.collection("users").doc(decodedToken.uid).get();
+      const isAdminRole = userDoc.exists && userDoc.data()?.role === "admin";
+      const isAuthorizedAdminEmail = decodedToken.email === 'hossam9866@moe.om' || decodedToken.email === 'housmhousm17@gmail.com';
+
+      if (!isAdminRole && !isAuthorizedAdminEmail) {
+         return res.status(403).json({ success: false, error: "Forbidden: Only admins can perform this action." });
+      }
+
+      const { email, newPassword } = req.body;
+      if (!email || !newPassword) {
+        return res.status(400).json({ success: false, error: "Missing email or newPassword." });
+      }
+
+      // Try to update existing user, or create if they don't exist in Auth yet
+      try {
+        const userRecord = await getAuth().getUserByEmail(email);
+        await getAuth().updateUser(userRecord.uid, { password: newPassword });
+      } catch (authErr: any) {
+        if (authErr.code === 'auth/user-not-found') {
+          // User exists in Firestore but not in Auth yet, create them now
+          await getAuth().createUser({
+            email: email,
+            password: newPassword
+          });
+        } else {
+          throw authErr;
+        }
+      }
+
+      res.status(200).json({ success: true, message: `Password for ${email} has been successfully updated.` });
+    } catch (err: any) {
+      console.error("Admin change password error:", err);
+      res.status(500).json({ success: false, error: err.message || "Failed to update password." });
+    }
+  });
+
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", time: new Date().toISOString() });
   });
@@ -269,8 +352,42 @@ ${keyAnswer}
     }
   });
 
+
+  // Admin feature: Force reset a user's password directly
+  app.post("/api/admin/change-password", async (req, res) => {
+    try {
+      const { email, newPassword } = req.body;
+      
+      if (!email || !newPassword) {
+        return res.status(400).json({ success: false, error: "Missing email or new password." });
+      }
+
+      if (!getApps().length) {
+        return res.status(500).json({ success: false, error: "Firebase Admin SDK is not initialized. Missing service account." });
+      }
+
+      // Find user by email
+      const userRecord = await getAuth().getUserByEmail(email);
+      
+      // Update user password
+      await getAuth().updateUser(userRecord.uid, {
+        password: newPassword
+      });
+
+      res.status(200).json({ success: true, message: "Password updated successfully." });
+    } catch (err: any) {
+      console.error("Error resetting password:", err);
+      // Determine if user not found
+      if (err.code === 'auth/user-not-found') {
+        res.status(404).json({ success: false, error: "User with this email was not found in Firebase Auth." });
+      } else {
+        res.status(500).json({ success: false, error: err.message || "Failed to reset password." });
+      }
+    }
+  });
+
   // --- Serve Client/Vite Middleware ---
-  if (process.env.NODE_ENV !== "production" && !process.env.K_SERVICE) {
+  if (process.env.NODE_ENV !== "production") {
     console.log("Starting server in DEVELOPMENT mode with Vite Middleware...");
     const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({

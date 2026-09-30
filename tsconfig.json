@@ -1,5 +1,9 @@
 {
   "compilerOptions": {
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "target": "es2022",
     "target": "ES2022",
     "experimentalDecorators": true,
     "useDefineForClassFields": false,
