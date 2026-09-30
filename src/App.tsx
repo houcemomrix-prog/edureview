@@ -31,7 +31,8 @@ import {
   AssessmentStatus, 
   UserRole,
   ArchivedForm,
-  FormDesignSettings
+  FormDesignSettings,
+  isDualRoleAccount
 } from './types';
 import { 
   isSandboxActive, 
@@ -80,6 +81,7 @@ import { SignatureVerifierView } from './components/SignatureVerifierView';
 import { GuestPortal } from './components/GuestPortal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { MobileBottomNav } from './components/MobileBottomNav';
+import ChangePasswordModal from './components/ChangePasswordModal';
 import { OMAN_WUSTA_SCHOOLS } from './data/schoolsData';
 import { Language, getTranslatedText, translateSubject, translateGrade, translateStatus, isSubjectMatch, isUniversalSubject } from './lib/translations';
 
@@ -177,6 +179,7 @@ export default function App() {
   const [showUploadForm, setShowUploadForm] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   
   // Forms & reviews inputs
   const [formTitle, setFormTitle] = useState('');
@@ -1567,6 +1570,20 @@ export default function App() {
     if (mssUserRaw) {
       try {
         const mssProfile = JSON.parse(mssUserRaw);
+        if (isDualRoleAccount(mssProfile)) {
+          if (!mssProfile.name || mssProfile.name.includes('خالد العامري')) {
+            mssProfile.name = 'أ. حسام عمري';
+          }
+          const savedHossamRole = localStorage.getItem('oman_moe_hossam_role') as UserRole;
+          if (savedHossamRole === 'moderator') {
+            mssProfile.role = 'moderator';
+            mssProfile.jobTitle = 'فاحص ومعتمد اللغة الإنجليزية';
+            mssProfile.subject = 'English Language';
+          } else if (savedHossamRole === 'admin') {
+            mssProfile.role = 'admin';
+            mssProfile.jobTitle = 'مدير النظام';
+          }
+        }
         setUserProfile(mssProfile);
         return;
       } catch (err) {
@@ -1633,12 +1650,43 @@ export default function App() {
               }
               const unsubProfile = subscribeToUserProfile(user.uid, (updatedProf) => {
                 if (updatedProf) {
+                  if (isDualRoleAccount(updatedProf)) {
+                    if (!updatedProf.name || updatedProf.name.includes('خالد العامري')) {
+                      updatedProf.name = 'أ. حسام عمري';
+                    }
+                    const savedHossamRole = localStorage.getItem('oman_moe_hossam_role') as UserRole;
+                    if (savedHossamRole === 'moderator') {
+                      updatedProf.role = 'moderator';
+                      updatedProf.jobTitle = 'فاحص ومعتمد اللغة الإنجليزية';
+                      updatedProf.subject = 'English Language';
+                    } else if (savedHossamRole === 'admin') {
+                      updatedProf.role = 'admin';
+                      updatedProf.jobTitle = 'مدير النظام';
+                    }
+                  }
                   setUserProfile(updatedProf);
                   setShowOnboarding(false);
                 } else {
-                  // User signed up with correct email address but has no profile document. Onboard them!
-                  setOnboardName(user.displayName || '');
-                  setShowOnboarding(true);
+                  if (user.email === 'housmhousm17@gmail.com' || user.email === 'hossam9866@moe.om') {
+                    const savedHossamRole = (localStorage.getItem('oman_moe_hossam_role') as UserRole) || 'admin';
+                    const hossamProf: UserProfile = {
+                      uid: user.uid,
+                      name: 'أ. حسام عمري',
+                      email: user.email,
+                      role: savedHossamRole,
+                      jobTitle: savedHossamRole === 'moderator' ? 'فاحص ومعتمد اللغة الإنجليزية' : 'مدير النظام',
+                      subject: savedHossamRole === 'moderator' ? 'English Language' : undefined,
+                      directorate: 'المديرية العامة للتربية والتعليم بمحافظة الوسطى',
+                      createdAt: new Date().toISOString()
+                    };
+                    createUserProfile(hossamProf);
+                    setUserProfile(hossamProf);
+                    setShowOnboarding(false);
+                  } else {
+                    // User signed up with correct email address but has no profile document. Onboard them!
+                    setOnboardName(user.displayName || '');
+                    setShowOnboarding(true);
+                  }
                 }
                 setAuthLoading(false);
               });
@@ -1995,12 +2043,15 @@ export default function App() {
           return;
         } catch (authErr: any) {
           console.warn("Direct Firebase signin failed for admin, falling back to local session:", authErr);
+          const savedHossamRole = (localStorage.getItem('oman_moe_hossam_role') as UserRole) || 'admin';
+          const currentRole = savedHossamRole === 'moderator' ? 'moderator' : 'admin';
           const adminProf: UserProfile = {
             uid: 'demo-admin-1',
-            name: 'خالد العامري (مدير النظام)',
+            name: 'أ. حسام عمري',
             email: 'hossam9866@moe.om',
-            role: 'admin',
-            jobTitle: 'مدير النظام',
+            role: currentRole,
+            jobTitle: currentRole === 'moderator' ? 'فاحص ومعتمد اللغة الإنجليزية' : 'مدير النظام',
+            subject: currentRole === 'moderator' ? 'English Language' : undefined,
             directorate: 'المديرية العامة للتربية والتعليم بمحافظة الوسطى',
             createdAt: new Date().toISOString()
           };
@@ -2268,6 +2319,45 @@ export default function App() {
     
     // Otherwise fallback to whatever GuestPortal handles
     setGuestView('admin-portal');
+  };
+
+  const handleToggleAdminModeratorRole = async () => {
+    if (!userProfile) return;
+    if (!isDualRoleAccount(userProfile)) return;
+
+    const nextRole: UserRole = userProfile.role === 'admin' ? 'moderator' : 'admin';
+    const nextJobTitle = nextRole === 'admin' ? 'مدير النظام' : 'فاحص ومعتمد اللغة الإنجليزية';
+    const nextSubject = nextRole === 'moderator' ? 'English Language' : userProfile.subject;
+
+    const updatedProfile: UserProfile = {
+      ...userProfile,
+      name: (userProfile.name && !userProfile.name.includes('خالد العامري')) ? userProfile.name : 'أ. حسام عمري',
+      role: nextRole,
+      jobTitle: nextJobTitle,
+      subject: nextSubject
+    };
+
+    localStorage.setItem('oman_moe_hossam_role', nextRole);
+    setUserProfile(updatedProfile);
+
+    try {
+      await createUserProfile(updatedProfile);
+    } catch (e) {
+      console.warn("Could not sync dual role toggle:", e);
+    }
+
+    if (nextRole === 'admin') {
+      setAdminTab('catalog');
+      setSelectedSubject('');
+    } else {
+      setActiveTab('exams');
+      setSelectedSubject('English Language');
+      setFormSubject('English Language');
+    }
+
+    const roleNameArabic = nextRole === 'admin' ? 'مدير النظام' : 'فاحص ومعتمد اللغة الإنجليزية';
+    const roleNameEnglish = nextRole === 'admin' ? 'System Administrator' : 'English Language Examiner & Moderator';
+    handleSuccess(language === 'ar' ? `تم التبديل بنجاح إلى وضع: ${roleNameArabic}` : `Switched successfully to: ${roleNameEnglish}`);
   };
 
   const handleSaveModeratorSubject = async (e: React.FormEvent) => {
@@ -2589,6 +2679,8 @@ export default function App() {
         setShowUploadForm={setShowUploadForm}
         adminTab={adminTab}
         setAdminTab={setAdminTab}
+        onChangePassword={() => setShowChangePasswordModal(true)}
+        onToggleDualRole={handleToggleAdminModeratorRole}
         onLogoClick={() => {
           // If logged out entirely (guest view)
           if (!userProfile) {
@@ -5398,6 +5490,18 @@ export default function App() {
         result={aiPrecheckResult}
         loading={aiPrecheckLoading}
         language={language}
+      />
+
+      {/* --- User Self-Service Change Password Modal --- */}
+      <ChangePasswordModal
+        isOpen={showChangePasswordModal}
+        onClose={() => setShowChangePasswordModal(false)}
+        userEmail={userProfile?.email || ''}
+        userName={userProfile?.name || ''}
+        language={language}
+        onSuccess={() => {
+          handleSuccess(language === 'ar' ? 'تم تحديث كلمة المرور الخاصة بك بنجاح.' : 'Your password has been successfully updated.');
+        }}
       />
 
       {/* --- Microsoft SSO Authentication Transition overlay --- */}
