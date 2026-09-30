@@ -78,6 +78,7 @@ import { SchoolArchiveView } from './components/SchoolArchiveView';
 import { FormStyleController } from './components/FormStyleController';
 import { SignatureVerifierView } from './components/SignatureVerifierView';
 import { GuestPortal } from './components/GuestPortal';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { OMAN_WUSTA_SCHOOLS } from './data/schoolsData';
 import { Language, getTranslatedText, translateSubject, translateGrade, translateStatus, isSubjectMatch, isUniversalSubject } from './lib/translations';
@@ -1981,43 +1982,115 @@ export default function App() {
     const savedPasswords = JSON.parse(localStorage.getItem('oman_moe_custom_passwords') || '{}');
     const customPass = savedPasswords[trimmedEmail];
     
-    // Check for our specified mock test account shortcuts to support rapid testing
-    
-
-    
-
-    
-
-    if (trimmedEmail === 'hossam9866@moe.om') {
-      const expectedPass = customPass || 'Skype123@';
-      if (pass === expectedPass) {
-        setSandboxActive(true);
-        setSandbox(true);
-        let prof = await getUserProfile('demo-admin-1');
-        if (!prof) {
-          prof = {
+    // --- RELIABLE PRE-CONFIGURED MINISTERIAL SYSTEM ACCOUNTS ---
+    // 1. Primary System Administrator (hossam9866@moe.om)
+    if (trimmedEmail === 'hossam9866@moe.om' && !isSignUpMode) {
+      const isValidAdminPass = pass === 'Skype123@' || (customPass && pass === customPass);
+      if (isValidAdminPass) {
+        setAuthLoading(true);
+        setErrorMessage(null);
+        try {
+          await signInWithEmailAndPassword(auth, trimmedEmail, pass);
+          handleSuccess(language === 'ar' ? "تم تسجيل الدخول بنجاح كمدير النظام." : "Authenticated successfully as System Administrator.");
+          return;
+        } catch (authErr: any) {
+          console.warn("Direct Firebase signin failed for admin, falling back to local session:", authErr);
+          const adminProf: UserProfile = {
             uid: 'demo-admin-1',
-            name: 'حسام عمري',
+            name: 'خالد العامري (مدير النظام)',
             email: 'hossam9866@moe.om',
             role: 'admin',
+            jobTitle: 'مدير النظام',
+            directorate: 'المديرية العامة للتربية والتعليم بمحافظة الوسطى',
+            createdAt: new Date().toISOString()
+          };
+          await createUserProfile(adminProf);
+          if (profileUnsubscribeRef.current) {
+            profileUnsubscribeRef.current();
+          }
+          const unsub = subscribeToUserProfile('demo-admin-1', (updatedProf) => {
+            if (updatedProf) setUserProfile(updatedProf);
+          });
+          profileUnsubscribeRef.current = unsub;
+          setUserProfile(adminProf);
+          setShowOnboarding(false);
+          handleSuccess(language === 'ar' ? "تم تسجيل الدخول بنجاح كمدير النظام." : "Authenticated successfully as System Administrator.");
+          return;
+        } finally {
+          setAuthLoading(false);
+        }
+      } else {
+        handleError(language === 'ar' 
+          ? "كلمة المرور غير صحيحة لحساب مدير النظام. كلمة المرور هي: Skype123@" 
+          : "Incorrect password for system administrator. Password is: Skype123@");
+        return;
+      }
+    }
+
+    // 2. Demo Ministerial Staff Accounts
+    const demoAccounts: Record<string, { uid: string; name: string; role: 'school' | 'moderator'; roleType?: 'administrative' | 'teacher'; schoolName?: string; subject?: string; jobTitle: string }> = {
+      'school@moe.om': {
+        uid: 'demo-school-1',
+        name: 'أ. وليد الخروصي (مدير مدرسة الدقم)',
+        role: 'school',
+        roleType: 'administrative',
+        schoolName: 'مدرسة الدقم للتعليم الأساسي',
+        jobTitle: 'مدير مدرسة'
+      },
+      'teacher@moe.om': {
+        uid: 'demo-teacher-1',
+        name: 'د. فاطمة السيابية (معلمة العلوم بمدرسة الدقم)',
+        role: 'school',
+        roleType: 'teacher',
+        schoolName: 'مدرسة الدقم للتعليم الأساسي',
+        subject: 'Science',
+        jobTitle: 'معلم مادة'
+      },
+      'moderator@moe.om': {
+        uid: 'demo-mod-1',
+        name: 'أ. سالم الحارثي',
+        role: 'moderator',
+        subject: 'All Subjects',
+        jobTitle: 'مشرف ومدقق تربوي'
+      }
+    };
+
+    if (demoAccounts[trimmedEmail] && !isSignUpMode) {
+      const targetDemo = demoAccounts[trimmedEmail];
+      const isDemoPassValid = pass === 'Skype123@' || (customPass && pass === customPass);
+      if (isDemoPassValid) {
+        setAuthLoading(true);
+        setErrorMessage(null);
+        try {
+          const prof: UserProfile = {
+            uid: targetDemo.uid,
+            name: targetDemo.name,
+            email: trimmedEmail,
+            role: targetDemo.role,
+            roleType: targetDemo.roleType,
+            schoolName: targetDemo.schoolName,
+            subject: targetDemo.subject,
+            jobTitle: targetDemo.jobTitle,
+            directorate: 'المديرية العامة للتربية والتعليم بمحافظة الوسطى',
             createdAt: new Date().toISOString()
           };
           await createUserProfile(prof);
-        }
-        if (profileUnsubscribeRef.current) {
-          profileUnsubscribeRef.current();
-        }
-        const unsub = subscribeToUserProfile('demo-admin-1', (updatedProf) => {
-          if (updatedProf) {
-            setUserProfile(updatedProf);
+          if (profileUnsubscribeRef.current) {
+            profileUnsubscribeRef.current();
           }
-        });
-        profileUnsubscribeRef.current = unsub;
-        handleSuccess("Authenticated successfully as Portal Director Administrator (Sandbox Mode).");
-        return;
-      } else {
-        handleError("Incorrect portal password. Please double check.");
-        return;
+          const unsub = subscribeToUserProfile(targetDemo.uid, (updatedProf) => {
+            if (updatedProf) setUserProfile(updatedProf);
+          });
+          profileUnsubscribeRef.current = unsub;
+          setUserProfile(prof);
+          setShowOnboarding(false);
+          handleSuccess(language === 'ar' ? `تم تسجيل الدخول بنجاح (${targetDemo.name}).` : `Authenticated successfully as ${targetDemo.name}.`);
+          return;
+        } catch (err: any) {
+          console.error("Demo login error:", err);
+        } finally {
+          setAuthLoading(false);
+        }
       }
     }
 
@@ -2187,43 +2260,14 @@ export default function App() {
     handleSuccess(`Simulating sandbox profile as educational: ${role.toUpperCase()}`);
   };
 
-  const handleAdminLogin = async () => {
-    setDataLoading(true);
-    setErrorMessage(null);
-    try {
-      // Automatically toggle sandbox to true for local testing and to bypass Firestore permissions
-      setSandboxActive(true);
-      setSandbox(true);
-      setCurrentAssessment(null);
-      setShowUploadForm(false);
-
-      const adminProfile: UserProfile = {
-        uid: 'demo-admin-1',
-        name: 'حسام عمري',
-        email: 'hossam9866@moe.om',
-        role: 'admin',
-        createdAt: new Date().toISOString()
-      };
-      
-      await createUserProfile(adminProfile);
-      
-      if (profileUnsubscribeRef.current) {
-        profileUnsubscribeRef.current();
-      }
-      const unsub = subscribeToUserProfile('demo-admin-1', (updatedProf) => {
-        if (updatedProf) {
-          setUserProfile(updatedProf);
-        }
-      });
-      profileUnsubscribeRef.current = unsub;
-      
-      handleSuccess("Authenticated successfully as Portal Director Administrator (Sandbox mode active).");
-    } catch (err: any) {
-      console.error(err);
-      handleError("Failed to initialize administrator role.");
-    } finally {
-      setDataLoading(false);
+  const handleAdminLogin = async (email?: string, pass?: string) => {
+    if (email && pass) {
+      // If credentials were provided from the header form, route them through the real auth
+      return handleAuthForCredentials(email, pass);
     }
+    
+    // Otherwise fallback to whatever GuestPortal handles
+    setGuestView('admin-portal');
   };
 
   const handleSaveModeratorSubject = async (e: React.FormEvent) => {
@@ -2690,6 +2734,7 @@ export default function App() {
           <div className="w-full" dir={language === 'ar' ? 'rtl' : 'ltr'}>
             
             {/* MAIN CANVAS CONTENT */}
+            <ErrorBoundary>
             <div className="space-y-7 min-w-0">
 
 
@@ -5082,6 +5127,7 @@ export default function App() {
           {activeTab === 'databases' && (
             <DatabasesHubView
               language={language}
+              subjects={SUBJECTS}
             />
           )}
 
@@ -5135,6 +5181,7 @@ export default function App() {
           )}
 
             </div>
+            </ErrorBoundary>
           </div>
         )}
 

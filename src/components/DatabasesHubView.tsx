@@ -15,11 +15,12 @@ import { Language } from '../lib/translations';
 
 interface DatabasesHubViewProps {
   language: Language;
+  subjects: string[];
 }
 
 type DbTab = 'users' | 'schools' | 'stamps';
 
-export function DatabasesHubView({ language }: DatabasesHubViewProps) {
+export function DatabasesHubView({ language, subjects }: DatabasesHubViewProps) {
   const [activeDbTab, setActiveDbTab] = useState<DbTab>('users');
   const isRtl = language === 'ar';
 
@@ -111,7 +112,7 @@ export function DatabasesHubView({ language }: DatabasesHubViewProps) {
               exit={{ opacity: 0, y: -15 }}
               transition={{ duration: 0.18 }}
             >
-              <UserDatabaseView language={language} />
+              <UserDatabaseView language={language} subjects={subjects} />
             </motion.div>
           )}
 

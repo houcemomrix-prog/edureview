@@ -81,7 +81,7 @@ interface HeaderProps {
   onToggleSandbox: (active: boolean) => void;
   onLogout: () => void;
   onLoginRequest: () => void;
-  onAdminLogin: () => void;
+  onAdminLogin: (email?: string, pass?: string) => void;
   onSwitchSandboxUser: (role: 'school' | 'moderator' | 'admin' | 'teacher') => void;
   authLoading: boolean;
   guestView?: 'welcome' | 'login-portal' | 'admin-portal' | 'forgot-password';
@@ -647,7 +647,7 @@ export function Header({
                 <form 
                   onSubmit={(e) => {
                     e.preventDefault();
-                    onAdminLogin();
+                    onAdminLogin(adminEmail, adminPassword);
                     setShowAdminLoginForm(false);
                   }}
                   className="flex items-center gap-1.5 animate-in slide-in-from-right duration-250 font-sans"
@@ -1279,7 +1279,7 @@ export function Header({
                       if (onSelectGuestView) {
                         onSelectGuestView('admin-portal');
                       } else {
-                        onAdminLogin();
+                        onAdminLogin(adminEmail, adminPassword); // Though usually they just navigate to the admin portal view here
                       }
                     }}
                     className={`w-full py-3 rounded-xl text-xs font-bold shadow-xs flex items-center justify-center gap-2 transition-all cursor-pointer border ${

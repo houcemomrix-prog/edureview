@@ -19,6 +19,10 @@ import {
   Filter,
   Shield
 } from 'lucide-react';
+
+import { auth } from '../services/firebase';
+import { KeyRound, CheckCircle } from 'lucide-react';
+
 import { UserProfile, UserRole } from '../types';
 import { getAllUserProfiles, createUserProfile, deleteUserProfileAdmin } from '../services/db';
 import { Language, translateSubject, translateGrade } from '../lib/translations';
@@ -45,7 +49,64 @@ export function UserDatabaseView({ language, subjects }: UserDatabaseViewProps) 
 
   // Form Modal States
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [resetStatus, setResetStatus] = useState<{type: 'idle' | 'loading' | 'success' | 'error', message: string}>({type: 'idle', message: ''});
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
+
+  
+  // Password Reset Widget States
+  const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
+  const [resetSearchEmail, setResetSearchEmail] = useState('');
+  const [resetNewPassword, setResetNewPassword] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [resetSuccess, setResetSuccess] = useState<string | null>(null);
+
+  const handleForcePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetSearchEmail.trim() || !resetNewPassword) {
+      setResetError('Please enter both email and new password');
+      return;
+    }
+    
+    setResetLoading(true);
+    setResetError(null);
+    setResetSuccess(null);
+
+    try {
+      // Get the admin's current token
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) {
+        throw new Error(
+          language === 'ar'
+            ? 'لم يتم العثور على جلسة مصادقة نشطة لمدير النظام. يرجى تسجيل الدخول مجدداً عبر زر "تسجيل دخول مدير النظام".'
+            : 'No active ministerial authentication session found. Please log in using the "Admin Log In" button.'
+        );
+      }
+      
+      const response = await fetch('/api/admin/change-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ email: resetSearchEmail.trim(), newPassword: resetNewPassword })
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to change password');
+      }
+
+      setResetSuccess(data.message || 'Password successfully updated.');
+      setResetSearchEmail('');
+      setResetNewPassword('');
+    } catch (err: any) {
+      setResetError(err.message || 'Error occurred while changing password');
+    } finally {
+      setResetLoading(false);
+    }
+  };
 
   // Form Fields
   const [formName, setFormName] = useState('');
@@ -122,6 +183,8 @@ export function UserDatabaseView({ language, subjects }: UserDatabaseViewProps) 
   };
 
   // Open Add modal
+
+
   const handleOpenAdd = () => {
     setEditingUser(null);
     setFormName('');
@@ -281,15 +344,31 @@ export function UserDatabaseView({ language, subjects }: UserDatabaseViewProps) 
               : 'Central registry for all active continuous evaluation managers, regional supervisors, and administrative officers.'}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={handleOpenAdd}
-          className="w-full sm:w-auto px-4 py-2.5 bg-[#051C3F] hover:bg-[#124282] text-white rounded-xl text-xs font-bold font-heading flex items-center justify-center gap-2 cursor-pointer transition-all shadow-md active:scale-95"
-          id="btn-add-user"
-        >
-          <UserPlus className="w-4 h-4 text-amber-400" />
-          <span>{language === 'ar' ? 'إضافة مستخدم جديد' : 'Add New Staff'}</span>
-        </button>
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+          <button
+            type="button"
+            onClick={() => {
+              setResetSearchEmail('');
+              setResetNewPassword('');
+              setResetError(null);
+              setResetSuccess(null);
+              setIsResetPasswordModalOpen(true);
+            }}
+            className="w-full sm:w-auto px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold font-heading flex items-center justify-center gap-2 cursor-pointer transition-all shadow-sm active:scale-95"
+          >
+            <Lock className="w-4 h-4" />
+            <span>{language === 'ar' ? 'إعادة تعيين كلمة المرور' : 'Force Reset Password'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleOpenAdd}
+            className="w-full sm:w-auto px-4 py-2.5 bg-[#051C3F] hover:bg-[#124282] text-white rounded-xl text-xs font-bold font-heading flex items-center justify-center gap-2 cursor-pointer transition-all shadow-md active:scale-95"
+            id="btn-add-user"
+          >
+            <UserPlus className="w-4 h-4 text-amber-400" />
+            <span>{language === 'ar' ? 'إضافة مستخدم جديد' : 'Add New Staff'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Alert overlays */}
@@ -979,6 +1058,94 @@ export function UserDatabaseView({ language, subjects }: UserDatabaseViewProps) 
           </div>
         </div>
       )}
+      {/* RESET PASSWORD MODAL */}
+      {isResetPasswordModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsResetPasswordModalOpen(false)}></div>
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl relative z-10 overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <h3 className="font-heading font-black text-lg text-[#0B1E40]">
+                {language === 'ar' ? 'إعادة تعيين كلمة مرور المستخدم' : 'Force Reset User Password'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsResetPasswordModalOpen(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-5 overflow-y-auto">
+              <p className="text-xs text-slate-500 mb-4 leading-relaxed">
+                {language === 'ar' 
+                  ? 'قم بإدخال البريد الإلكتروني للمستخدم وكلمة المرور المؤقتة الجديدة. سيتم تعيينها مباشرة عبر صلاحيات المسؤول ولن يتم إرسال أي بريد إلكتروني.' 
+                  : 'Enter the user\'s email address and a new temporary password. It will be forcefully updated using admin privileges. No email will be sent.'}
+              </p>
+              
+              {resetError && (
+                <div className="mb-4 p-3 rounded-xl text-xs font-bold flex items-center gap-2 bg-rose-50 text-rose-700 border border-rose-200">
+                  <ShieldAlert className="w-4 h-4 shrink-0" />
+                  <span>{resetError}</span>
+                </div>
+              )}
+              {resetSuccess && (
+                <div className="mb-4 p-3 rounded-xl text-xs font-bold flex items-center gap-2 bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  <CheckCircle className="w-4 h-4 shrink-0" />
+                  <span>{resetSuccess}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleForcePasswordReset} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-extrabold text-slate-400 block uppercase tracking-wider">
+                    {language === 'ar' ? 'البريد الإلكتروني المستهدف' : 'Target Email Address'}
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={resetSearchEmail}
+                    onChange={(e) => setResetSearchEmail(e.target.value)}
+                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-xs text-slate-800 bg-white focus:outline-none focus:border-[#051C3F] font-bold"
+                    placeholder="name@moe.om"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-extrabold text-slate-400 block uppercase tracking-wider">
+                    {language === 'ar' ? 'كلمة المرور الجديدة' : 'New Temporary Password'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={resetNewPassword}
+                    onChange={(e) => setResetNewPassword(e.target.value)}
+                    minLength={6}
+                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-xs text-slate-800 bg-white focus:outline-none focus:border-[#051C3F] font-bold"
+                    placeholder="New password (min 6 chars)"
+                  />
+                </div>
+                
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    disabled={resetLoading || !!resetSuccess}
+                    className="w-full py-3 bg-rose-600 hover:bg-rose-700 disabled:bg-rose-400 text-white rounded-xl text-xs font-black transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    {resetLoading ? (
+                      <span className="animate-pulse">{language === 'ar' ? 'جاري المعالجة...' : 'Processing...'}</span>
+                    ) : (
+                      <>
+                        <Lock className="w-4 h-4" />
+                        <span>{language === 'ar' ? 'تأكيد تغيير كلمة المرور' : 'Confirm Password Change'}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
 
     </div>
   );
