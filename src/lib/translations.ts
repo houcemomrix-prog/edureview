@@ -177,6 +177,23 @@ export const translations = {
     'Information Technology': 'Information Technology',
     'Applied Sciences': 'Applied Sciences',
     'Individual Skills': 'Individual Skills',
+    'Identity and Citizenship': 'Identity & Citizenship',
+    'Physical and Health Education': 'Physical & Health Education',
+    'Visual Arts': 'Visual Arts',
+    'Musical Arts': 'Musical Arts',
+    'Life Skills': 'Life Skills',
+    'School Sports': 'School Sports',
+    'Fine Arts': 'Fine Arts',
+    'Musical Skills': 'Musical Skills',
+    'Career Guidance': 'Career Guidance Service',
+    'Core Mathematics': 'Core Mathematics',
+    'Advanced Mathematics': 'Advanced Mathematics',
+    'Environmental Sciences': 'Environmental Sciences',
+    'Economic Geography': 'Economic Geography',
+    'History (Islamic Civilization)': 'History (Islamic Civilization)',
+    'English Language Skills': 'English Language Skills',
+    'Geography and Modern Technologies': 'Geography & Modern Technologies',
+    'History (World Around Me)': 'History (World Around Me)',
 
     // Grades Translation
     'Grade 1': 'Grade 1',
@@ -398,6 +415,23 @@ export const translations = {
     'Information Technology': 'تقنية المعلومات',
     'Applied Sciences': 'العلوم التطبيقية',
     'Individual Skills': 'المهارات الفردية',
+    'Identity and Citizenship': 'الهوية والمواطنة',
+    'Physical and Health Education': 'التربية البدنية والصحية',
+    'Visual Arts': 'الفنون البصرية',
+    'Musical Arts': 'الفنون الموسيقية',
+    'Life Skills': 'المهارات الحياتية',
+    'School Sports': 'الرياضة المدرسية',
+    'Fine Arts': 'الفنون التشكيلية',
+    'Musical Skills': 'المهارات الموسيقية',
+    'Career Guidance': 'خدمة التوجيه المهني',
+    'Core Mathematics': 'الرياضيات الأساسية',
+    'Advanced Mathematics': 'الرياضيات المتقدمة',
+    'Environmental Sciences': 'العلوم البيئية',
+    'Economic Geography': 'الجغرافيا الاقتصادية',
+    'History (Islamic Civilization)': 'التاريخ (الحضارة الإسلامية)',
+    'English Language Skills': 'مهارات اللغة الإنجليزية',
+    'Geography and Modern Technologies': 'الجغرافيا والتقنيات الحديثة',
+    'History (World Around Me)': 'التاريخ (العالم من حولي)',
     'All Subjects': 'جميع المواد',
 
     // Grades Translation
@@ -513,6 +547,91 @@ const SUBJECT_DICTIONARY: Record<string, { en: string; ar: string; aliases: stri
     en: 'Individual Skills',
     ar: 'المهارات الفردية',
     aliases: ['مهارات فردية', 'المهارات الفردية', 'individual skills', 'فنون تشكيلية', 'رياضة مدرسية', 'موسيقى']
+  },
+  'Identity and Citizenship': {
+    en: 'Identity and Citizenship',
+    ar: 'الهوية والمواطنة',
+    aliases: ['هوية ومواطنة', 'الهوية والمواطنة', 'مواطنة', 'الهوية', 'identity', 'citizenship']
+  },
+  'Physical and Health Education': {
+    en: 'Physical and Health Education',
+    ar: 'التربية البدنية والصحية',
+    aliases: ['تربية بدنية', 'تربية صحية', 'التربية البدنية والصحية', 'بدنية', 'صحة وبدنية', 'physical and health education']
+  },
+  'Visual Arts': {
+    en: 'Visual Arts',
+    ar: 'الفنون البصرية',
+    aliases: ['فنون بصرية', 'الفنون البصرية', 'بصرية', 'visual arts']
+  },
+  'Musical Arts': {
+    en: 'Musical Arts',
+    ar: 'الفنون الموسيقية',
+    aliases: ['فنون موسيقية', 'الفنون الموسيقية', 'musical arts']
+  },
+  'Life Skills': {
+    en: 'Life Skills',
+    ar: 'المهارات الحياتية',
+    aliases: ['مهارات حياتية', 'المهارات الحياتية', 'حياتية', 'life skills']
+  },
+  'School Sports': {
+    en: 'School Sports',
+    ar: 'الرياضة المدرسية',
+    aliases: ['رياضة مدرسية', 'الرياضة المدرسية', 'رياضة', 'school sports', 'pe']
+  },
+  'Fine Arts': {
+    en: 'Fine Arts',
+    ar: 'الفنون التشكيلية',
+    aliases: ['فنون تشكيلية', 'الفنون التشكيلية', 'تشكيلية', 'رسم', 'fine arts', 'art']
+  },
+  'Musical Skills': {
+    en: 'Musical Skills',
+    ar: 'المهارات الموسيقية',
+    aliases: ['مهارات موسيقية', 'المهارات الموسيقية', 'موسيقى', 'musical skills', 'music']
+  },
+  'Career Guidance': {
+    en: 'Career Guidance',
+    ar: 'خدمة التوجيه المهني',
+    aliases: ['توجيه مهني', 'خدمة التوجيه المهني', 'التوجيه المهني', 'career guidance', 'guidance']
+  },
+  'Core Mathematics': {
+    en: 'Core Mathematics',
+    ar: 'الرياضيات الأساسية',
+    aliases: ['رياضيات أساسية', 'الرياضيات الأساسية', 'رياضيات اساسية', 'الرياضيات الاساسية', 'core math', 'core mathematics']
+  },
+  'Advanced Mathematics': {
+    en: 'Advanced Mathematics',
+    ar: 'الرياضيات المتقدمة',
+    aliases: ['رياضيات متقدمة', 'الرياضيات المتقدمة', 'advanced math', 'advanced mathematics']
+  },
+  'Environmental Sciences': {
+    en: 'Environmental Sciences',
+    ar: 'العلوم البيئية',
+    aliases: ['علوم بيئية', 'العلوم البيئية', 'بيئة', 'environmental science', 'environmental sciences']
+  },
+  'Economic Geography': {
+    en: 'Economic Geography',
+    ar: 'الجغرافيا الاقتصادية',
+    aliases: ['جغرافيا اقتصادية', 'الجغرافيا الاقتصادية', 'جغرافيا', 'economic geography']
+  },
+  'History (Islamic Civilization)': {
+    en: 'History (Islamic Civilization)',
+    ar: 'التاريخ (الحضارة الإسلامية)',
+    aliases: ['حضارة اسلامية', 'الحضارة الإسلامية', 'التاريخ الحضارة الإسلامية', 'تاريخ الحضارة الإسلامية', 'islamic civilization']
+  },
+  'English Language Skills': {
+    en: 'English Language Skills',
+    ar: 'مهارات اللغة الإنجليزية',
+    aliases: ['مهارات لغة إنجليزية', 'مهارات انجليزي', 'مهارات اللغة الانجليزية', 'english skills', 'english language skills']
+  },
+  'Geography and Modern Technologies': {
+    en: 'Geography and Modern Technologies',
+    ar: 'الجغرافيا والتقنيات الحديثة',
+    aliases: ['جغرافيا وتقنيات', 'الجغرافيا والتقنيات الحديثة', 'تقنيات حديثة', 'geography and modern technologies']
+  },
+  'History (World Around Me)': {
+    en: 'History (World Around Me)',
+    ar: 'التاريخ (العالم من حولي)',
+    aliases: ['العالم من حولي', 'تاريخ العالم من حولي', 'التاريخ العالم من حولي', 'world around me']
   }
 };
 

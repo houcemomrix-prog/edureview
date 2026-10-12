@@ -1093,9 +1093,12 @@ export const GuestPortal: React.FC<GuestPortalProps> = ({
                   </label>
                   <input
                     type="email"
+                    name="email"
+                    autoComplete="username"
                     required
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
+                    placeholder="user@moe.om"
                     className={`w-full px-3.5 py-3 text-xs text-slate-800 border border-slate-200 rounded-xl focus:outline-none focus:border-[#0b5e32] focus:ring-1 focus:ring-[#0b5e32]/30 font-bold animate-in fade-in ${language === 'ar' ? 'text-right dir-ltr' : 'text-left'}`}
                   />
                 </div>
@@ -1107,9 +1110,12 @@ export const GuestPortal: React.FC<GuestPortalProps> = ({
                   </label>
                   <input
                     type="password"
+                    name="password"
+                    autoComplete="current-password"
                     required
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
+                    placeholder="••••••••"
                     className={`w-full px-3.5 py-3 text-xs text-slate-800 border border-slate-200 rounded-xl focus:outline-none focus:border-[#0b5e32] focus:ring-1 focus:ring-[#0b5e32]/30 font-bold ${language === 'ar' ? 'text-right dir-ltr' : 'text-left'}`}
                   />
                   <div className={`flex pt-0.5 ${language === 'ar' ? 'justify-start' : 'justify-end'}`}>

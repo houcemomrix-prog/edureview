@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { Assessment, UserProfile, SchoolDoc } from '../types';
 import { OMAN_WUSTA_SCHOOLS } from '../data/schoolsData';
+import { ALL_CURRICULUM_SUBJECTS } from '../data/gradeCurriculum';
 import { Language, getTranslatedText, translateSubject, translateGrade, translateStatus } from '../lib/translations';
 import { 
   getAllUserProfiles, 
@@ -832,18 +833,9 @@ export function AdminStatsDashboard({ assessments, language = 'en' }: AdminStats
                       {formRole === 'moderator' && (
                         <option value="All Subjects">{language === 'ar' ? '🌟 جميع المواد (مدقق شامل)' : '🌟 All Subjects (Universal)'}</option>
                       )}
-                      <option value="Mathematics">{language === 'ar' ? 'الرياضيات' : 'Mathematics'}</option>
-                      <option value="Science">{language === 'ar' ? 'العلوم العامة' : 'Science'}</option>
-                      <option value="English Language">{language === 'ar' ? 'اللغة الإنجليزية' : 'English Language'}</option>
-                      <option value="Arabic Language">{language === 'ar' ? 'اللغة العربية' : 'Arabic Language'}</option>
-                      <option value="Physics">{language === 'ar' ? 'الفيزياء' : 'Physics'}</option>
-                      <option value="Chemistry">{language === 'ar' ? 'الكيمياء' : 'Chemistry'}</option>
-                      <option value="Biology">{language === 'ar' ? 'الأحياء' : 'Biology'}</option>
-                      <option value="Islamic Studies">{language === 'ar' ? 'التربية الإسلامية' : 'Islamic Studies'}</option>
-                      <option value="Social Studies">{language === 'ar' ? 'الدراسات الاجتماعية' : 'Social Studies'}</option>
-                      <option value="Information Technology">{language === 'ar' ? 'تقنية المعلومات' : 'Information Technology'}</option>
-                      <option value="Applied Sciences">{language === 'ar' ? 'العلوم التطبيقية' : 'Applied Sciences'}</option>
-                      <option value="Individual Skills">{language === 'ar' ? 'المهارات الفردية' : 'Individual Skills'}</option>
+                      {ALL_CURRICULUM_SUBJECTS.map((s) => (
+                        <option key={`stats-subj-${s}`} value={s}>{translateSubject(s, language)}</option>
+                      ))}
                     </select>
                   </div>
                 )}

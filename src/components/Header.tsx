@@ -29,15 +29,11 @@ import {
 import { UserProfile, SchoolReport, TeacherNotification, isDualRoleAccount } from '../types';
 import { getTranslatedText, Language, translateSubject } from '../lib/translations';
 import { getSchoolReports, getTeacherNotifications, markTeacherNotificationRead } from '../services/db';
+import { ALL_CURRICULUM_SUBJECTS } from '../data/gradeCurriculum';
 import logoEmblem from './logo-emblem.svg';
 import logoMoe from '../../photo.jpg';
 
-const SUBJECTS = [
-  'Arabic Language', 'English Language', 'Mathematics', 
-  'Science', 'Physics', 'Chemistry', 'Biology', 
-  'Islamic Studies', 'Social Studies', 'Information Technology',
-  'Applied Sciences', 'Individual Skills'
-];
+const SUBJECTS = ALL_CURRICULUM_SUBJECTS;
 
 const getUserSubtitle = (profile: UserProfile, lang: Language): string => {
   // If user has dual role privileges (Admin + Examiner)
@@ -710,6 +706,8 @@ export function Header({
                 >
                   <input
                     type="email"
+                    name="admin-email"
+                    autoComplete="username"
                     required
                     value={adminEmail}
                     onChange={(e) => setAdminEmail(e.target.value)}
@@ -718,6 +716,8 @@ export function Header({
                   />
                   <input
                     type="password"
+                    name="admin-password"
+                    autoComplete="current-password"
                     required
                     value={adminPassword}
                     onChange={(e) => setAdminPassword(e.target.value)}
@@ -772,8 +772,8 @@ export function Header({
                   type="button"
                   onClick={() => {
                     setShowAdminLoginForm(true);
-                    setAdminEmail('hossam9866@moe.om');
-                    setAdminPassword('Skype123@');
+                    setAdminEmail('');
+                    setAdminPassword('');
                   }}
                   className="px-3.5 py-2 bg-[#0a4d28] hover:bg-[#126b3a] text-white rounded-xl text-xs font-bold transition-all cursor-pointer border border-white/10 shadow-sm flex items-center gap-1.5"
                 >

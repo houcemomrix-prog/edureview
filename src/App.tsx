@@ -84,6 +84,7 @@ import { MobileBottomNav } from './components/MobileBottomNav';
 import ChangePasswordModal from './components/ChangePasswordModal';
 import { OMAN_WUSTA_SCHOOLS } from './data/schoolsData';
 import { Language, getTranslatedText, translateSubject, translateGrade, translateStatus, isSubjectMatch, isUniversalSubject } from './lib/translations';
+import { getSubjectsForGrade, ALL_CURRICULUM_SUBJECTS } from './data/gradeCurriculum';
 
 // Standard constant select options
 const GRADES = [
@@ -220,25 +221,11 @@ export default function App() {
   const [loginPassword, setLoginPassword] = useState('');
   const [isSignUpMode, setIsSignUpMode] = useState(false);
 
-  // Sync demo prefilled credentials when changing active role selection
+  // Reset credentials when changing active role selection
   useEffect(() => {
     setIsSignUpMode(false); // Reset to login mode whenever role changes
-    if (selectedAuthRole === 'none') {
-      setLoginEmail('');
-      setLoginPassword('');
-    } else if (selectedAuthRole === 'director') {
-      setLoginEmail('');
-      setLoginPassword('');
-    } else if (selectedAuthRole === 'teacher') {
-      setLoginEmail('');
-      setLoginPassword('');
-    } else if (selectedAuthRole === 'moderator') {
-      setLoginEmail('');
-      setLoginPassword('');
-    } else if (selectedAuthRole === 'admin') {
-      setLoginEmail('hossam9866@moe.om');
-      setLoginPassword('Skype123@');
-    }
+    setLoginEmail('');
+    setLoginPassword('');
   }, [selectedAuthRole]);
 
   // Loading States & Messages
@@ -2072,8 +2059,8 @@ export default function App() {
         }
       } else {
         handleError(language === 'ar' 
-          ? "كلمة المرور غير صحيحة لحساب مدير النظام. كلمة المرور هي: Skype123@" 
-          : "Incorrect password for system administrator. Password is: Skype123@");
+          ? "كلمة المرور غير صحيحة لحساب مدير النظام. يرجى التأكد وإعادة المحاولة." 
+          : "Incorrect password for system administrator. Please verify and try again.");
         return;
       }
     }
@@ -3210,7 +3197,16 @@ export default function App() {
                           </label>
                           <select
                             value={formGrade}
-                            onChange={(e) => setFormGrade(e.target.value)}
+                            onChange={(e) => {
+                              const newGrade = e.target.value;
+                              setFormGrade(newGrade);
+                              const validSubjs = getSubjectsForGrade(newGrade);
+                              if (userProfile.roleType !== 'teacher' || !userProfile.subject) {
+                                if (!validSubjs.includes(formSubject)) {
+                                  setFormSubject(validSubjs[0] || '');
+                                }
+                              }
+                            }}
                             className="w-full px-3 py-3 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none bg-slate-50/50 font-medium cursor-pointer"
                           >
                             {GRADES.map((g, index) => <option key={`app-grade-${g}-${index}`} value={g}>{translateGrade(g, language)}</option>)}
@@ -3241,7 +3237,7 @@ export default function App() {
                             {userProfile.roleType === 'teacher' && userProfile.subject ? (
                               <option key={`app-locked-subj-${userProfile.subject}`} value={userProfile.subject}>{translateSubject(userProfile.subject, language)}</option>
                             ) : (
-                              SUBJECTS.map((s, index) => <option key={`app-subj-${s}-${index}`} value={s}>{translateSubject(s, language)}</option>)
+                              getSubjectsForGrade(formGrade).map((s, index) => <option key={`app-subj-${s}-${index}`} value={s}>{translateSubject(s, language)}</option>)
                             )}
                           </select>
                           {userProfile.roleType === 'teacher' && userProfile.subject && (
@@ -3474,7 +3470,16 @@ export default function App() {
                     <div className="grid grid-cols-2 gap-2">
                       <select
                         value={selectedGrade}
-                        onChange={(e) => setSelectedGrade(e.target.value)}
+                        onChange={(e) => {
+                          const newGrade = e.target.value;
+                          setSelectedGrade(newGrade);
+                          if (newGrade) {
+                            const validSubjs = getSubjectsForGrade(newGrade);
+                            if (selectedSubject && selectedSubject !== 'ALL' && !validSubjs.includes(selectedSubject)) {
+                              setSelectedSubject('');
+                            }
+                          }
+                        }}
                         className="px-3 py-2 border border-slate-100 rounded-xl text-xs text-slate-600 bg-slate-50 font-medium cursor-pointer text-ellipsis overflow-hidden"
                       >
                         <option key="audit-grade-default" value="">{getTranslatedText('allGrades', language)}</option>
@@ -3488,7 +3493,9 @@ export default function App() {
                         <option key="audit-subj-default" value="">
                           {userProfile?.role === 'moderator' && !isUniversalSubject(userProfile?.subject)
                             ? `${language === 'ar' ? 'تخصصي: ' : 'My Specialty: '}${translateSubject(userProfile.subject || '', language)}`
-                            : getTranslatedText('allSubjects', language)
+                            : (selectedGrade 
+                                ? (language === 'ar' ? `كل مواد ${translateGrade(selectedGrade, language)}` : `All subjects of ${translateGrade(selectedGrade, language)}`)
+                                : getTranslatedText('allSubjects', language))
                           }
                         </option>
                         {userProfile?.role === 'moderator' && !isUniversalSubject(userProfile?.subject) && (
@@ -3496,7 +3503,7 @@ export default function App() {
                             {language === 'ar' ? '🌟 استعراض كافة المواد' : '🌟 View All Subjects'}
                           </option>
                         )}
-                        {SUBJECTS.map((s, index) => <option key={`audit-subj-${s}-${index}`} value={s}>{translateSubject(s, language)}</option>)}
+                        {getSubjectsForGrade(selectedGrade).map((s, index) => <option key={`audit-subj-${s}-${index}`} value={s}>{translateSubject(s, language)}</option>)}
                       </select>
                     </div>
 

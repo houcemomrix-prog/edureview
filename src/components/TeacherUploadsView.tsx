@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { UserProfile, Assessment } from '../types';
 import { Language, translateGrade, translateSubject } from '../lib/translations';
+import { getSubjectsForGrade, ALL_CURRICULUM_SUBJECTS } from '../data/gradeCurriculum';
 
 interface TeacherUploadsViewProps {
   userProfile: UserProfile;
@@ -44,13 +45,6 @@ const GRADES = [
   'Grade 11', 'Grade 12'
 ];
 
-const SUBJECTS = [
-  'Arabic Language', 'English Language', 'Mathematics', 
-  'Science', 'Physics', 'Chemistry', 'Biology', 
-  'Islamic Studies', 'Social Studies', 'Information Technology',
-  'Applied Sciences', 'Individual Skills'
-];
-
 interface UploadSlot {
   id: string;
   pdfFile: File | null;
@@ -76,7 +70,7 @@ export function TeacherUploadsView({
 
   const [selectedGrade, setSelectedGrade] = useState<string>('');
   const [selectedSubject, setSelectedSubject] = useState<string>(
-    teacherSubject || userProfile.subject || SUBJECTS[2]
+    teacherSubject || userProfile.subject || ALL_CURRICULUM_SUBJECTS[0] || 'Islamic Studies'
   );
 
   React.useEffect(() => {
@@ -339,7 +333,16 @@ export function TeacherUploadsView({
             </label>
             <select
               value={selectedGrade}
-              onChange={(e) => setSelectedGrade(e.target.value)}
+              onChange={(e) => {
+                const newGrade = e.target.value;
+                setSelectedGrade(newGrade);
+                const gradeSubjs = getSubjectsForGrade(newGrade);
+                if (!isSubjectTeacher || !teacherSubject) {
+                  if (!gradeSubjs.includes(selectedSubject)) {
+                    setSelectedSubject(gradeSubjs[0] || '');
+                  }
+                }
+              }}
               className="w-full px-4 py-3 border border-slate-200 rounded-xl text-xs font-extrabold text-[#051C3F] focus:outline-none focus:border-emerald-600 bg-white cursor-pointer shadow-xs"
             >
               <option key="upload-grade-default" value="">
@@ -386,7 +389,7 @@ export function TeacherUploadsView({
                     {translateSubject(teacherSubject, language)}
                   </option>
                 ) : (
-                  SUBJECTS.map((s, index) => (
+                  getSubjectsForGrade(selectedGrade).map((s, index) => (
                     <option key={`upload-subj-${s}-${index}`} value={s}>
                       {translateSubject(s, language)}
                     </option>

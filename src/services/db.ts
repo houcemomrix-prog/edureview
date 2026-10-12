@@ -1909,12 +1909,9 @@ export async function markTeacherNotificationRead(notificationId: string): Promi
 }
 
 
-export const DEFAULT_SUBJECTS = [
-  'Arabic Language', 'English Language', 'Mathematics', 
-  'Science', 'Physics', 'Chemistry', 'Biology', 
-  'Islamic Studies', 'Social Studies', 'Information Technology',
-  'Applied Sciences', 'Individual Skills'
-];
+import { ALL_CURRICULUM_SUBJECTS } from '../data/gradeCurriculum';
+
+export const DEFAULT_SUBJECTS = ALL_CURRICULUM_SUBJECTS;
 
 export async function getSubjectsList(): Promise<string[]> {
   try {
